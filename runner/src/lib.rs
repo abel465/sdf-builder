@@ -6,7 +6,7 @@ mod graphics;
 
 #[derive(EnumString, Display, PartialEq, Eq, Copy, Clone)]
 pub enum RustGPUShader {
-    Simplest,
+    Mandelbrot,
 }
 
 struct CompiledShaderModules {
@@ -58,7 +58,7 @@ fn maybe_watch(
         std::env::set_var("OUT_DIR", env!("OUT_DIR"));
         std::env::set_var("PROFILE", env!("PROFILE"));
         let crate_name = match options.shader {
-            RustGPUShader::Simplest => "simplest-shader",
+            RustGPUShader::Mandelbrot => "mandelbrot",
         };
         let manifest_dir = env!("CARGO_MANIFEST_DIR");
         let crate_path = [manifest_dir, "..", "shaders", crate_name]
@@ -129,7 +129,7 @@ fn maybe_watch(
 #[derive(StructOpt, Clone)]
 #[structopt(name = "example-runner-wgpu")]
 pub struct Options {
-    #[structopt(short, long, default_value = "Simplest")]
+    #[structopt(short, long, default_value = "Mandelbrot")]
     shader: RustGPUShader,
 
     #[structopt(long)]

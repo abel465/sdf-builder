@@ -3,7 +3,7 @@ resolver = "2"
 members = [
     "runner",
     "runner/builder",
-    "shaders/simplest-shader",
+    "shaders/mandelbrot",
 ]
 
 [workspace.package]
