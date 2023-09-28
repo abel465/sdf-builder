@@ -2,7 +2,10 @@ use crate::{maybe_watch, CompiledShaderModules, Options};
 
 use shared::ShaderConstants;
 use winit::{
-    event::{ElementState, Event, KeyboardInput, MouseButton, VirtualKeyCode, WindowEvent},
+    event::{
+        ElementState, Event, KeyboardInput, MouseButton, MouseScrollDelta, VirtualKeyCode,
+        WindowEvent,
+    },
     event_loop::{ControlFlow, EventLoop, EventLoopBuilder},
     window::Window,
 };
@@ -145,6 +148,8 @@ async fn run(
     let mut mouse_button_pressed = 0;
     let mut mouse_button_press_since_last_frame = 0;
     let mut mouse_button_press_time = [f32::NEG_INFINITY; 3];
+    let mut zoom = 1.0;
+    let (mut translate_x, mut translate_y) = (0.0, 0.0);
 
     event_loop.run(move |event, _, control_flow| {
         // Have the closure take ownership of the resources.
@@ -250,6 +255,9 @@ async fn run(
                             drag_start_y,
                             drag_end_x,
                             drag_end_y,
+                            zoom,
+                            translate_x,
+                            translate_y,
                             mouse_button_pressed,
                             mouse_button_press_time,
                         };
@@ -289,17 +297,33 @@ async fn run(
                     ElementState::Pressed => {
                         mouse_button_pressed |= mask;
                         mouse_button_press_since_last_frame |= mask;
-
-                        if button == MouseButton::Left {
-                            drag_start_x = cursor_x;
-                            drag_start_y = cursor_y;
-                            drag_end_x = cursor_x;
-                            drag_end_y = cursor_y;
-                        }
                     }
-                    ElementState::Released => mouse_button_pressed &= !mask,
+                    ElementState::Released => {
+                        if button == MouseButton::Left {
+                            translate_x += drag_start_x - drag_end_x;
+                            translate_y += drag_start_y - drag_end_y;
+                        }
+                        mouse_button_pressed &= !mask
+                    }
+                }
+                if button == MouseButton::Left {
+                    drag_start_x = cursor_x;
+                    drag_start_y = cursor_y;
+                    drag_end_x = cursor_x;
+                    drag_end_y = cursor_y;
                 }
             }
+            Event::WindowEvent {
+                event: WindowEvent::MouseWheel { delta, .. },
+                ..
+            } => match delta {
+                MouseScrollDelta::LineDelta(_, y) => {
+                    zoom -= y;
+                }
+                MouseScrollDelta::PixelDelta(p) => {
+                    zoom -= 0.1 * p.y as f32;
+                }
+            },
             Event::WindowEvent {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
