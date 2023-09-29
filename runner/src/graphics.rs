@@ -316,14 +316,27 @@ async fn run(
             Event::WindowEvent {
                 event: WindowEvent::MouseWheel { delta, .. },
                 ..
-            } => match delta {
-                MouseScrollDelta::LineDelta(_, y) => {
-                    zoom -= y;
-                }
-                MouseScrollDelta::PixelDelta(p) => {
-                    zoom -= 0.1 * p.y as f32;
-                }
-            },
+            } => {
+                let scalar = match delta {
+                    MouseScrollDelta::LineDelta(_, y) => {
+                        if y < 0.0 {
+                            1.0 - 0.1 * y
+                        } else {
+                            1.0 / (1.0 + 0.1 * y)
+                        }
+                    }
+                    MouseScrollDelta::PixelDelta(p) => {
+                        if p.y < 0.0 {
+                            1.0 + 0.1 * (1.0 - p.y as f32).ln()
+                        } else {
+                            1.0 / (1.0 + 0.1 * (1.0 + p.y as f32).ln())
+                        }
+                    }
+                };
+                zoom *= scalar;
+                translate_x *= 1.0 / scalar;
+                translate_y *= 1.0 / scalar;
+            }
             Event::WindowEvent {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
