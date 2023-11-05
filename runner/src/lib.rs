@@ -7,6 +7,7 @@ mod graphics;
 #[derive(EnumString, Display, PartialEq, Eq, Copy, Clone)]
 pub enum RustGPUShader {
     Mandelbrot,
+    RayMarching,
 }
 
 struct CompiledShaderModules {
@@ -59,6 +60,7 @@ fn maybe_watch(
         std::env::set_var("PROFILE", env!("PROFILE"));
         let crate_name = match options.shader {
             RustGPUShader::Mandelbrot => "mandelbrot",
+            RustGPUShader::RayMarching => "ray-marching",
         };
         let manifest_dir = env!("CARGO_MANIFEST_DIR");
         let crate_path = [manifest_dir, "..", "shaders", crate_name]

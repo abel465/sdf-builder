@@ -4,6 +4,7 @@ members = [
     "runner",
     "runner/builder",
     "shaders/mandelbrot",
+    "shaders/ray-marching",
 ]
 default-members = [
     "runner",
