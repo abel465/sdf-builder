@@ -18,23 +18,4 @@ license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
 spirv-std = { path = "../rust-gpu/crates/spirv-std", version = "=0.9.0" }
-spirv-std-types = { path = "../rust-gpu/crates/spirv-std/shared", version = "=0.9.0" }
-spirv-std-macros = { path = "../rust-gpu/crates/spirv-std/macros", version = "=0.9.0" }
 spirv-builder = { path = "../rust-gpu/crates/spirv-builder", version = "=0.9.0", default-features = false  }
-rustc_codegen_spirv = { path = "../rust-gpu/crates/rustc_codegen_spirv", version = "=0.9.0", default-features = false }
-rustc_codegen_spirv-types = { path = "../rust-gpu/crates/rustc_codegen_spirv-types", version = "=0.9.0" }
-
-# Enable incremental by default in release mode.
-[profile.release]
-incremental = true
-# HACK(eddyb) this is the default but without explicitly specifying it, Cargo
-# will treat the identical settings in `[profile.release.build-override]` below
-# as different sets of `rustc` flags and will not reuse artifacts between them.
-codegen-units = 256
-
-# Compile build-dependencies in release mode with the same settings
-# as regular dependencies (including the incremental enabled above).
-[profile.release.build-override]
-opt-level = 3
-incremental = true
-codegen-units = 256
