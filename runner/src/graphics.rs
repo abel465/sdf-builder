@@ -1,4 +1,4 @@
-use crate::{maybe_watch, CompiledShaderModules, Options};
+use crate::{maybe_watch, CompiledShaderModules, Options, RustGPUShader};
 
 use shared::ShaderConstants;
 use winit::{
@@ -334,8 +334,10 @@ async fn run(
                     }
                 };
                 zoom *= scalar;
-                translate_x *= 1.0 / scalar;
-                translate_y *= 1.0 / scalar;
+                if options.shader == RustGPUShader::Mandelbrot {
+                    translate_x *= 1.0 / scalar;
+                    translate_y *= 1.0 / scalar;
+                }
             }
             Event::WindowEvent {
                 event: WindowEvent::CursorMoved { position, .. },
