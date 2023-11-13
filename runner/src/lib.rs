@@ -9,6 +9,7 @@ pub enum RustGPUShader {
     Mandelbrot,
     RayMarching,
     RayMarching2D,
+    KochSnowflake,
 }
 
 struct CompiledShaderModules {
@@ -63,6 +64,7 @@ fn maybe_watch(
             RustGPUShader::Mandelbrot => "mandelbrot",
             RustGPUShader::RayMarching => "ray-marching",
             RustGPUShader::RayMarching2D => "ray-marching-2d",
+            RustGPUShader::KochSnowflake => "koch-snowflake",
         };
         let manifest_dir = env!("CARGO_MANIFEST_DIR");
         let crate_path = [manifest_dir, "..", "shaders", crate_name]

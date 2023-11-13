@@ -6,6 +6,7 @@ members = [
     "shaders/mandelbrot",
     "shaders/ray-marching",
     "shaders/ray-marching-2d",
+    "shaders/koch-snowflake",
 ]
 default-members = [
     "runner",
