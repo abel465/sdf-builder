@@ -9,6 +9,7 @@ pub enum RustGPUShader {
     Mandelbrot,
     RayMarching,
     RayMarching2D,
+    SierpinskiTriangle,
     KochSnowflake,
 }
 
@@ -64,6 +65,7 @@ fn maybe_watch(
             RustGPUShader::Mandelbrot => "mandelbrot",
             RustGPUShader::RayMarching => "ray-marching",
             RustGPUShader::RayMarching2D => "ray-marching-2d",
+            RustGPUShader::SierpinskiTriangle => "sierpinski-triangle",
             RustGPUShader::KochSnowflake => "koch-snowflake",
         };
         let manifest_dir = env!("CARGO_MANIFEST_DIR");

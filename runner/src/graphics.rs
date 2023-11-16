@@ -334,7 +334,9 @@ async fn run(
                     }
                 };
                 zoom *= scalar;
-                if options.shader == RustGPUShader::Mandelbrot {
+                if options.shader == RustGPUShader::Mandelbrot
+                    || options.shader == RustGPUShader::SierpinskiTriangle
+                {
                     translate_x *= 1.0 / scalar;
                     translate_y *= 1.0 / scalar;
                 }
