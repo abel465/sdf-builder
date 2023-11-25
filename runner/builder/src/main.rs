@@ -18,9 +18,10 @@ fn build_shader(path_to_crate: &str, codegen_names: bool) -> Result<(), Box<dyn 
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    build_shader("../../../shaders/sky-shader", true)?;
-    build_shader("../../../shaders/simplest-shader", false)?;
-    build_shader("../../../shaders/compute-shader", false)?;
-    build_shader("../../../shaders/mouse-shader", false)?;
+    build_shader("../../shaders/mandelbrot", true)?;
+    build_shader("../../shaders/koch-snowflake", false)?;
+    build_shader("../../shaders/sierpinski-triangle", false)?;
+    build_shader("../../shaders/ray-marching", false)?;
+    build_shader("../../shaders/ray-marching-2d", false)?;
     Ok(())
 }
