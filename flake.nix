@@ -1,12 +1,11 @@
 {
-  description = "Rust GPU";
+  description = "Rust GPU Shaders";
 
   inputs = {
     fenix = {
-      url = "github:nix-community/fenix/207c664b137bf699b276481614d176b9bbe9f537";
+      url = "github:nix-community/fenix/cd56ae0389d59084fad87be375bc480e3874cade";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    nixpkgs.url = "nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -16,46 +15,28 @@
         overlays = [ fenix.overlays.default ];
         pkgs = import nixpkgs { inherit overlays system; };
 
-        toolchain = "latest";
-        rustPkg = fenix.packages.${system}.${toolchain}.withComponents [
+        rustPkg = fenix.packages.${system}.latest.withComponents [
           "rust-src" 
           "rustc-dev" 
           "llvm-tools-preview"
           "cargo"
-          "clippy"
           "rustc"
-          "rustfmt"
         ];
       in
       {
         devShell = with pkgs; mkShell rec {
 
-          hardeningDisable = [ "fortify" ];
-
           nativeBuildInputs = [ pkg-config ];
           
           LD_LIBRARY_PATH = "${lib.makeLibraryPath buildInputs}";
 
-          # WGPU_ADAPTER_NAME = "vulkan";
-
           buildInputs = [
-            gdb
             rustPkg
-            rust-analyzer-nightly
-            gcc
-            spirv-tools
-            libxkbcommon
-            # xorg.libX11
-            # xorg.libXcursor
-            # xwayland
-            # xorg.libXrandr
-            # xorg.libXi
+            xorg.libX11
+            xorg.libXcursor
+            xorg.libXrandr
+            xorg.libXi
             vulkan-loader
-            vulkan-tools
-            vulkan-headers
-            vulkan-validation-layers
-            wayland
-            libGL
           ];
         };
       });
