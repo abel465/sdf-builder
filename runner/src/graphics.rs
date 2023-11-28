@@ -179,19 +179,6 @@ async fn run(
                     });
                 }
             }
-            Event::WindowEvent {
-                event: WindowEvent::Resized(size),
-                ..
-            } => {
-                if size.width != 0 && size.height != 0 {
-                    // Recreate the swap chain with the new size
-                    if let Ok((surface, surface_config)) = &mut surface_with_config {
-                        surface_config.width = size.width;
-                        surface_config.height = size.height;
-                        surface.configure(&device, surface_config);
-                    }
-                }
-            }
             Event::RedrawRequested(_) => {
                 // FIXME(eddyb) only the mouse shader *really* needs this, could
                 // avoid doing wasteful rendering by special-casing each shader?
@@ -274,8 +261,18 @@ async fn run(
                     output.present();
                 }
             }
-            Event::WindowEvent {
-                event:
+            Event::WindowEvent { event, .. } => {
+                match event {
+                    WindowEvent::Resized(size) => {
+                        if size.width != 0 && size.height != 0 {
+                            // Recreate the swap chain with the new size
+                            if let Ok((surface, surface_config)) = &mut surface_with_config {
+                                surface_config.width = size.width;
+                                surface_config.height = size.height;
+                                surface.configure(&device, surface_config);
+                            }
+                        }
+                    }
                     WindowEvent::CloseRequested
                     | WindowEvent::KeyboardInput {
                         input:
@@ -284,71 +281,65 @@ async fn run(
                                 ..
                             },
                         ..
-                    },
-                ..
-            } => *control_flow = ControlFlow::Exit,
-            Event::WindowEvent {
-                event: WindowEvent::MouseInput { state, button, .. },
-                ..
-            } => {
-                let mask = 1 << mouse_button_index(button);
-                match state {
-                    ElementState::Pressed => {
-                        mouse_button_pressed |= mask;
-                        mouse_button_press_since_last_frame |= mask;
-                    }
-                    ElementState::Released => {
+                    } => *control_flow = ControlFlow::Exit,
+                    WindowEvent::MouseInput { state, button, .. } => {
+                        let mask = 1 << mouse_button_index(button);
+                        match state {
+                            ElementState::Pressed => {
+                                mouse_button_pressed |= mask;
+                                mouse_button_press_since_last_frame |= mask;
+                            }
+                            ElementState::Released => {
+                                if button == MouseButton::Left {
+                                    translate_x += drag_start_x - drag_end_x;
+                                    translate_y += drag_start_y - drag_end_y;
+                                }
+                                mouse_button_pressed &= !mask
+                            }
+                        }
                         if button == MouseButton::Left {
-                            translate_x += drag_start_x - drag_end_x;
-                            translate_y += drag_start_y - drag_end_y;
-                        }
-                        mouse_button_pressed &= !mask
-                    }
-                }
-                if button == MouseButton::Left {
-                    drag_start_x = cursor_x;
-                    drag_start_y = cursor_y;
-                    drag_end_x = cursor_x;
-                    drag_end_y = cursor_y;
-                }
-            }
-            Event::WindowEvent {
-                event: WindowEvent::MouseWheel { delta, .. },
-                ..
-            } => {
-                let scalar = match delta {
-                    MouseScrollDelta::LineDelta(_, y) => {
-                        if y < 0.0 {
-                            1.0 - 0.1 * y
-                        } else {
-                            1.0 / (1.0 + 0.1 * y)
+                            drag_start_x = cursor_x;
+                            drag_start_y = cursor_y;
+                            drag_end_x = cursor_x;
+                            drag_end_y = cursor_y;
                         }
                     }
-                    MouseScrollDelta::PixelDelta(p) => {
-                        if p.y < 0.0 {
-                            1.0 + 0.1 * (1.0 - p.y as f32).ln()
-                        } else {
-                            1.0 / (1.0 + 0.1 * (1.0 + p.y as f32).ln())
+                    WindowEvent::MouseWheel { delta, .. } => {
+                        let scalar = match delta {
+                            MouseScrollDelta::LineDelta(_, y) => {
+                                if y < 0.0 {
+                                    1.0 - 0.1 * y
+                                } else {
+                                    1.0 / (1.0 + 0.1 * y)
+                                }
+                            }
+                            MouseScrollDelta::PixelDelta(p) => {
+                                if p.y < 0.0 {
+                                    1.0 + 0.1 * (1.0 - p.y as f32).ln()
+                                } else {
+                                    1.0 / (1.0 + 0.1 * (1.0 + p.y as f32).ln())
+                                }
+                            }
+                        };
+                        zoom *= scalar;
+                        if options.shader == RustGPUShader::Mandelbrot
+                            || options.shader == RustGPUShader::SierpinskiTriangle
+                        {
+                            translate_x *= 1.0 / scalar;
+                            translate_y *= 1.0 / scalar;
                         }
                     }
-                };
-                zoom *= scalar;
-                if options.shader == RustGPUShader::Mandelbrot
-                    || options.shader == RustGPUShader::SierpinskiTriangle
-                {
-                    translate_x *= 1.0 / scalar;
-                    translate_y *= 1.0 / scalar;
-                }
-            }
-            Event::WindowEvent {
-                event: WindowEvent::CursorMoved { position, .. },
-                ..
-            } => {
-                cursor_x = position.x as f32;
-                cursor_y = position.y as f32;
-                if (mouse_button_pressed & (1 << mouse_button_index(MouseButton::Left))) != 0 {
-                    drag_end_x = cursor_x;
-                    drag_end_y = cursor_y;
+                    WindowEvent::CursorMoved { position, .. } => {
+                        cursor_x = position.x as f32;
+                        cursor_y = position.y as f32;
+                        if (mouse_button_pressed & (1 << mouse_button_index(MouseButton::Left)))
+                            != 0
+                        {
+                            drag_end_x = cursor_x;
+                            drag_end_y = cursor_y;
+                        }
+                    }
+                    _ => {}
                 }
             }
             Event::UserEvent(new_module) => {
