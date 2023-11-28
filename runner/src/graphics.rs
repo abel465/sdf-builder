@@ -65,7 +65,6 @@ async fn run(
 
     let adapter = wgpu::util::initialize_adapter_from_env_or_default(
         &instance,
-        backends,
         // Request an adapter which can render to our surface
         initial_surface.as_ref().ok(),
     )
