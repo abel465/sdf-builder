@@ -2,10 +2,10 @@ use std::borrow::Cow;
 use structopt::StructOpt;
 use strum::{Display, EnumString};
 
-mod app;
 mod context;
 mod graphics;
 mod render_pass;
+mod window;
 
 #[derive(EnumString, Display, PartialEq, Eq, Copy, Clone)]
 pub enum RustGPUShader {

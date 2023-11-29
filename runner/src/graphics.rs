@@ -1,6 +1,6 @@
 use crate::{
-    context, maybe_watch, render_pass::create_pipeline, CompiledShaderModules, Options,
-    RustGPUShader,
+    context, maybe_watch, render_pass::create_pipeline, window::Window, CompiledShaderModules,
+    Options, RustGPUShader,
 };
 
 use shared::ShaderConstants;
@@ -21,12 +21,8 @@ fn mouse_button_index(button: MouseButton) -> usize {
     }
 }
 
-async fn run(
-    options: Options,
-    app: crate::app::App,
-    compiled_shader_modules: CompiledShaderModules,
-) {
-    let mut context = context::GraphicsContext::new(&app).await;
+async fn run(options: Options, app: Window, compiled_shader_modules: CompiledShaderModules) {
+    let mut context = context::GraphicsContext::new(&app, &options).await;
 
     let pipeline_layout = context
         .device
@@ -254,14 +250,14 @@ pub fn start(options: &Options) {
         }
     }
 
-    let app = crate::app::App::new();
+    let window = Window::new();
 
     // Build the shader before we pop open a window, since it might take a while.
     let initial_shader = maybe_watch(
         options,
         #[cfg(not(target_arch = "wasm32"))]
         {
-            let proxy = app.event_loop.create_proxy();
+            let proxy = window.event_loop.create_proxy();
             Some(Box::new(move |res| match proxy.send_event(res) {
                 Ok(it) => it,
                 // ShaderModuleDescriptor is not `Debug`, so can't use unwrap/expect
@@ -290,7 +286,7 @@ pub fn start(options: &Options) {
         } else {
             futures::executor::block_on(run(
                 options.clone(),
-                app,
+                window,
                 initial_shader,
             ));
         }

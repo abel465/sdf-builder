@@ -1,4 +1,4 @@
-use crate::app::App;
+use crate::{window::Window, Options};
 
 pub struct GraphicsContext {
     pub surface: wgpu::Surface,
@@ -8,7 +8,7 @@ pub struct GraphicsContext {
 }
 
 impl GraphicsContext {
-    pub async fn new(app: &App) -> GraphicsContext {
+    pub async fn new(window: &Window, options: &Options) -> GraphicsContext {
         let backends = wgpu::util::backend_bits_from_env()
             .unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL);
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
@@ -16,7 +16,7 @@ impl GraphicsContext {
             dx12_shader_compiler: wgpu::util::dx12_shader_compiler_from_env().unwrap_or_default(),
         });
 
-        let initial_surface = unsafe { instance.create_surface(&app.window) }
+        let initial_surface = unsafe { instance.create_surface(&window.window) }
             .expect("Failed to create surface from window");
 
         let adapter = wgpu::util::initialize_adapter_from_env_or_default(
@@ -28,7 +28,7 @@ impl GraphicsContext {
         .expect("Failed to find an appropriate adapter");
 
         let mut features = wgpu::Features::PUSH_CONSTANTS;
-        if app.options.force_spirv_passthru {
+        if options.force_spirv_passthru {
             features |= wgpu::Features::SPIRV_SHADER_PASSTHROUGH;
         }
         let limits = wgpu::Limits {
@@ -67,8 +67,12 @@ impl GraphicsContext {
 
                 (surface, surface_config)
             };
-        let (surface, config) =
-            auto_configure_surface(&adapter, &device, initial_surface, app.window.inner_size());
+        let (surface, config) = auto_configure_surface(
+            &adapter,
+            &device,
+            initial_surface,
+            window.window.inner_size(),
+        );
 
         GraphicsContext {
             surface,
