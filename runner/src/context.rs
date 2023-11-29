@@ -9,8 +9,6 @@ pub struct GraphicsContext {
 
 impl GraphicsContext {
     pub async fn new(app: &App) -> GraphicsContext {
-        let size = &app.window.inner_size();
-
         let backends = wgpu::util::backend_bits_from_env()
             .unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL);
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
@@ -29,7 +27,6 @@ impl GraphicsContext {
         .await
         .expect("Failed to find an appropriate adapter");
 
-        let features = wgpu::Features::PUSH_CONSTANTS;
         let mut features = wgpu::Features::PUSH_CONSTANTS;
         if app.options.force_spirv_passthru {
             features |= wgpu::Features::SPIRV_SHADER_PASSTHROUGH;

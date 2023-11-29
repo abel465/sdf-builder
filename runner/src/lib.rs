@@ -5,6 +5,7 @@ use strum::{Display, EnumString};
 mod app;
 mod context;
 mod graphics;
+mod render_pass;
 
 #[derive(EnumString, Display, PartialEq, Eq, Copy, Clone)]
 pub enum RustGPUShader {
