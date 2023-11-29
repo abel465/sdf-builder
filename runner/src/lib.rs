@@ -2,9 +2,9 @@ use std::borrow::Cow;
 use structopt::StructOpt;
 use strum::{Display, EnumString};
 
-mod graphics;
 mod app;
 mod context;
+mod graphics;
 
 #[derive(EnumString, Display, PartialEq, Eq, Copy, Clone)]
 pub enum RustGPUShader {
@@ -47,11 +47,11 @@ impl CompiledShaderModules {
 
 fn maybe_watch(
     options: &Options,
-    #[cfg(not(any(target_os = "android", target_arch = "wasm32")))] on_watch: Option<
+    #[cfg(not(target_arch = "wasm32"))] on_watch: Option<
         Box<dyn FnMut(CompiledShaderModules) + Send + 'static>,
     >,
 ) -> CompiledShaderModules {
-    #[cfg(not(any(target_os = "android", target_arch = "wasm32")))]
+    #[cfg(not(target_arch = "wasm32"))]
     {
         use spirv_builder::{CompileResult, MetadataPrintout, SpirvBuilder};
         use std::path::PathBuf;
@@ -123,17 +123,6 @@ fn maybe_watch(
         }
         handle_compile_result(initial_result)
     }
-    #[cfg(any(target_os = "android", target_arch = "wasm32"))]
-    {
-        let module = match options.shader {
-            RustGPUShader::Simplest => {
-                wgpu::include_spirv_raw!(env!("simplest_shader.spv"))
-            }
-        };
-        CompiledShaderModules {
-            named_spv_modules: vec![(None, module)],
-        }
-    }
 }
 
 #[derive(StructOpt, Clone)]
@@ -146,15 +135,8 @@ pub struct Options {
     force_spirv_passthru: bool,
 }
 
-#[cfg_attr(target_os = "android", export_name = "android_main")]
-pub fn main(
-    #[cfg(target_os = "android")] android_app: winit::platform::android::activity::AndroidApp,
-) {
+pub fn main() {
     let options: Options = Options::from_args();
 
-    graphics::start(
-        #[cfg(target_os = "android")]
-        android_app,
-        &options,
-    );
+    graphics::start(&options);
 }

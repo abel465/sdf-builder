@@ -9,17 +9,14 @@ use winit::{
     event_loop::ControlFlow,
 };
 
-#[cfg(not(any(target_os = "android", target_arch = "wasm32")))]
+#[cfg(not(target_arch = "wasm32"))]
 mod shaders {
-    // The usual usecase of code generation is always building in build.rs, and so the codegen
-    // always happens. However, we want to both test code generation (on android) and runtime
-    // compilation (on desktop), so manually fill in what would have been codegenned for desktop.
     #[allow(non_upper_case_globals)]
     pub const main_fs: &str = "main_fs";
     #[allow(non_upper_case_globals)]
     pub const main_vs: &str = "main_vs";
 }
-#[cfg(any(target_os = "android", target_arch = "wasm32"))]
+#[cfg(target_arch = "wasm32")]
 mod shaders {
     include!(concat!(env!("OUT_DIR"), "/entry_points.rs"));
 }
@@ -330,20 +327,9 @@ fn create_pipeline(
 }
 
 #[allow(clippy::match_wild_err_arm)]
-pub fn start(
-    #[cfg(target_os = "android")] android_app: winit::platform::android::activity::AndroidApp,
-    options: &Options,
-) {
+pub fn start(options: &Options) {
     cfg_if::cfg_if! {
-        if #[cfg(target_os = "android")] {
-            android_logger::init_once(
-                android_logger::Config::default()
-                    .with_max_level("info".parse().unwrap()),
-            );
-
-            use winit::platform::android::EventLoopBuilderExtAndroid;
-            event_loop_builder.with_android_app(android_app);
-        } else if #[cfg(target_arch = "wasm32")] {
+        if #[cfg(target_arch = "wasm32")] {
             std::panic::set_hook(Box::new(console_error_panic_hook::hook));
             console_log::init().expect("could not initialize logger");
         } else {
@@ -356,7 +342,7 @@ pub fn start(
     // Build the shader before we pop open a window, since it might take a while.
     let initial_shader = maybe_watch(
         options,
-        #[cfg(not(any(target_os = "android", target_arch = "wasm32")))]
+        #[cfg(not(target_arch = "wasm32"))]
         {
             let proxy = app.event_loop.create_proxy();
             Some(Box::new(move |res| match proxy.send_event(res) {
