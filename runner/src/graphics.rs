@@ -1,4 +1,4 @@
-use crate::{maybe_watch, CompiledShaderModules, Options, RustGPUShader};
+use crate::{context, maybe_watch, CompiledShaderModules, Options, RustGPUShader};
 
 use shared::ShaderConstants;
 use winit::{
@@ -6,8 +6,7 @@ use winit::{
         ElementState, Event, KeyboardInput, MouseButton, MouseScrollDelta, VirtualKeyCode,
         WindowEvent,
     },
-    event_loop::{ControlFlow, EventLoop, EventLoopBuilder},
-    window::Window,
+    event_loop::ControlFlow,
 };
 
 #[cfg(not(any(target_os = "android", target_arch = "wasm32")))]
@@ -36,106 +35,27 @@ fn mouse_button_index(button: MouseButton) -> usize {
 
 async fn run(
     options: Options,
-    event_loop: EventLoop<CompiledShaderModules>,
-    window: Window,
+    app: crate::app::App,
     compiled_shader_modules: CompiledShaderModules,
 ) {
-    let backends = wgpu::util::backend_bits_from_env()
-        .unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL);
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-        backends,
-        dx12_shader_compiler: wgpu::util::dx12_shader_compiler_from_env().unwrap_or_default(),
-    });
+    let mut context = context::GraphicsContext::new(&app).await;
 
-    // HACK(eddyb) marker error type for lazily-created surfaces (e.g. on Android).
-    struct SurfaceCreationPending {
-        preferred_format: wgpu::TextureFormat,
-    }
-
-    // Wait for Resumed event on Android; the surface is only otherwise needed
-    // early to find an adapter that can render to this surface.
-    let initial_surface = if cfg!(target_os = "android") {
-        Err(SurfaceCreationPending {
-            preferred_format: wgpu::TextureFormat::Rgba8UnormSrgb,
-        })
-    } else {
-        Ok(unsafe { instance.create_surface(&window) }
-            .expect("Failed to create surface from window"))
-    };
-
-    let adapter = wgpu::util::initialize_adapter_from_env_or_default(
-        &instance,
-        // Request an adapter which can render to our surface
-        initial_surface.as_ref().ok(),
-    )
-    .await
-    .expect("Failed to find an appropriate adapter");
-
-    let mut features = wgpu::Features::PUSH_CONSTANTS;
-    if options.force_spirv_passthru {
-        features |= wgpu::Features::SPIRV_SHADER_PASSTHROUGH;
-    }
-    let limits = wgpu::Limits {
-        max_push_constant_size: 128,
-        ..Default::default()
-    };
-
-    // Create the logical device and command queue
-    let (device, queue) = adapter
-        .request_device(
-            &wgpu::DeviceDescriptor {
-                label: None,
-                features,
-                limits,
-            },
-            None,
-        )
-        .await
-        .expect("Failed to create device");
-
-    let auto_configure_surface =
-        |adapter: &_, device: &_, surface: wgpu::Surface, size: winit::dpi::PhysicalSize<_>| {
-            let mut surface_config = surface
-                .get_default_config(adapter, size.width, size.height)
-                .unwrap_or_else(|| {
-                    panic!(
-                        "Missing formats/present modes in surface capabilities: {:#?}",
-                        surface.get_capabilities(adapter)
-                    )
-                });
-
-            // FIXME(eddyb) should this be toggled by a CLI arg?
-            // NOTE(eddyb) VSync was disabled in the past, but without VSync,
-            // especially for simpler shaders, you can easily hit thousands
-            // of frames per second, stressing GPUs for no reason.
-            surface_config.present_mode = wgpu::PresentMode::AutoVsync;
-
-            surface.configure(device, &surface_config);
-
-            (surface, surface_config)
-        };
-    let mut surface_with_config = initial_surface
-        .map(|surface| auto_configure_surface(&adapter, &device, surface, window.inner_size()));
-
-    // Load the shaders from disk
-
-    let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: None,
-        bind_group_layouts: &[],
-        push_constant_ranges: &[wgpu::PushConstantRange {
-            stages: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-            range: 0..std::mem::size_of::<ShaderConstants>() as u32,
-        }],
-    });
+    let pipeline_layout = context
+        .device
+        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: None,
+            bind_group_layouts: &[],
+            push_constant_ranges: &[wgpu::PushConstantRange {
+                stages: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                range: 0..std::mem::size_of::<ShaderConstants>() as u32,
+            }],
+        });
 
     let mut render_pipeline = create_pipeline(
         &options,
-        &device,
+        &context.device,
         &pipeline_layout,
-        surface_with_config.as_ref().map_or_else(
-            |pending| pending.preferred_format,
-            |(_, surface_config)| surface_config.format,
-        ),
+        context.config.format,
         compiled_shader_modules,
     );
 
@@ -150,127 +70,104 @@ async fn run(
     let mut zoom = 1.0;
     let (mut translate_x, mut translate_y) = (0.0, 0.0);
 
-    event_loop.run(move |event, _, control_flow| {
+    app.event_loop.run(move |event, _, control_flow| {
         // Have the closure take ownership of the resources.
         // `event_loop.run` never returns, therefore we must do this to ensure
         // the resources are properly cleaned up.
-        let _ = (&instance, &adapter, &pipeline_layout);
+        // let _ = (&instance, &adapter, &pipeline_layout);
         let render_pipeline = &mut render_pipeline;
+        let window = &app.window;
 
         *control_flow = ControlFlow::Wait;
         match event {
             Event::MainEventsCleared => {
                 window.request_redraw();
             }
-            Event::Resumed => {
-                let new_surface = unsafe { instance.create_surface(&window) }
-                    .expect("Failed to create surface from window (after resume)");
-                surface_with_config = Ok(auto_configure_surface(
-                    &adapter,
-                    &device,
-                    new_surface,
-                    window.inner_size(),
-                ));
-            }
-            Event::Suspended => {
-                if let Ok((_, surface_config)) = &surface_with_config {
-                    surface_with_config = Err(SurfaceCreationPending {
-                        preferred_format: surface_config.format,
-                    });
-                }
-            }
             Event::RedrawRequested(_) => {
-                // FIXME(eddyb) only the mouse shader *really* needs this, could
-                // avoid doing wasteful rendering by special-casing each shader?
-                // (with VSync enabled this can't be *too* bad, thankfully)
-                // FIXME(eddyb) is this the best way to do continuous redraws in
-                // `winit`? (or should we stop using `ControlFlow::Wait`? etc.)
+                // TODO: only redraw if needed
                 window.request_redraw();
 
-                if let Ok((surface, surface_config)) = &mut surface_with_config {
-                    let output = match surface.get_current_texture() {
-                        Ok(surface) => surface,
-                        Err(err) => {
-                            eprintln!("get_current_texture error: {err:?}");
-                            match err {
-                                wgpu::SurfaceError::Lost => {
-                                    surface.configure(&device, surface_config);
-                                }
-                                wgpu::SurfaceError::OutOfMemory => {
-                                    *control_flow = ControlFlow::Exit;
-                                }
-                                _ => (),
+                let output = match context.surface.get_current_texture() {
+                    Ok(surface_texture) => surface_texture,
+                    Err(err) => {
+                        eprintln!("get_current_texture error: {err:?}");
+                        match err {
+                            wgpu::SurfaceError::Lost => {
+                                context.surface.configure(&context.device, &context.config);
                             }
-                            return;
-                        }
-                    };
-                    let output_view = output
-                        .texture
-                        .create_view(&wgpu::TextureViewDescriptor::default());
-                    let mut encoder = device
-                        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-                    {
-                        let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                            label: None,
-                            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                                view: &output_view,
-                                resolve_target: None,
-                                ops: wgpu::Operations {
-                                    load: wgpu::LoadOp::Clear(wgpu::Color::GREEN),
-                                    store: true,
-                                },
-                            })],
-                            depth_stencil_attachment: None,
-                        });
-
-                        let time = start.elapsed().as_secs_f32();
-                        for (i, press_time) in mouse_button_press_time.iter_mut().enumerate() {
-                            if (mouse_button_press_since_last_frame & (1 << i)) != 0 {
-                                *press_time = time;
+                            wgpu::SurfaceError::OutOfMemory => {
+                                *control_flow = ControlFlow::Exit;
                             }
+                            _ => (),
                         }
-                        mouse_button_press_since_last_frame = 0;
-
-                        let push_constants = ShaderConstants {
-                            width: window.inner_size().width,
-                            height: window.inner_size().height,
-                            time,
-                            cursor_x,
-                            cursor_y,
-                            drag_start_x,
-                            drag_start_y,
-                            drag_end_x,
-                            drag_end_y,
-                            zoom,
-                            translate_x,
-                            translate_y,
-                            mouse_button_pressed,
-                            mouse_button_press_time,
-                        };
-
-                        rpass.set_pipeline(render_pipeline);
-                        rpass.set_push_constants(
-                            wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                            0,
-                            bytemuck::bytes_of(&push_constants),
-                        );
-                        rpass.draw(0..3, 0..1);
+                        return;
                     }
+                };
+                let output_view = output
+                    .texture
+                    .create_view(&wgpu::TextureViewDescriptor::default());
+                let mut encoder = context
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+                {
+                    let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: None,
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: &output_view,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(wgpu::Color::GREEN),
+                                store: true,
+                            },
+                        })],
+                        depth_stencil_attachment: None,
+                    });
 
-                    queue.submit(Some(encoder.finish()));
-                    output.present();
+                    let time = start.elapsed().as_secs_f32();
+                    for (i, press_time) in mouse_button_press_time.iter_mut().enumerate() {
+                        if (mouse_button_press_since_last_frame & (1 << i)) != 0 {
+                            *press_time = time;
+                        }
+                    }
+                    mouse_button_press_since_last_frame = 0;
+
+                    let push_constants = ShaderConstants {
+                        width: window.inner_size().width,
+                        height: window.inner_size().height,
+                        time,
+                        cursor_x,
+                        cursor_y,
+                        drag_start_x,
+                        drag_start_y,
+                        drag_end_x,
+                        drag_end_y,
+                        zoom,
+                        translate_x,
+                        translate_y,
+                        mouse_button_pressed,
+                        mouse_button_press_time,
+                    };
+
+                    rpass.set_pipeline(render_pipeline);
+                    rpass.set_push_constants(
+                        wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                        0,
+                        bytemuck::bytes_of(&push_constants),
+                    );
+                    rpass.draw(0..3, 0..1);
                 }
+
+                context.queue.submit(Some(encoder.finish()));
+                output.present();
             }
             Event::WindowEvent { event, .. } => {
                 match event {
                     WindowEvent::Resized(size) => {
                         if size.width != 0 && size.height != 0 {
                             // Recreate the swap chain with the new size
-                            if let Ok((surface, surface_config)) = &mut surface_with_config {
-                                surface_config.width = size.width;
-                                surface_config.height = size.height;
-                                surface.configure(&device, surface_config);
-                            }
+                            context.config.width = size.width;
+                            context.config.height = size.height;
+                            context.surface.configure(&context.device, &context.config);
                         }
                     }
                     WindowEvent::CloseRequested
@@ -345,12 +242,9 @@ async fn run(
             Event::UserEvent(new_module) => {
                 *render_pipeline = create_pipeline(
                     &options,
-                    &device,
+                    &context.device,
                     &pipeline_layout,
-                    surface_with_config.as_ref().map_or_else(
-                        |pending| pending.preferred_format,
-                        |(_, surface_config)| surface_config.format,
-                    ),
+                    context.config.format,
                     new_module,
                 );
                 window.request_redraw();
@@ -440,7 +334,6 @@ pub fn start(
     #[cfg(target_os = "android")] android_app: winit::platform::android::activity::AndroidApp,
     options: &Options,
 ) {
-    let mut event_loop_builder = EventLoopBuilder::with_user_event();
     cfg_if::cfg_if! {
         if #[cfg(target_os = "android")] {
             android_logger::init_once(
@@ -457,14 +350,15 @@ pub fn start(
             env_logger::init();
         }
     }
-    let event_loop = event_loop_builder.build();
+
+    let app = crate::app::App::new();
 
     // Build the shader before we pop open a window, since it might take a while.
     let initial_shader = maybe_watch(
         options,
         #[cfg(not(any(target_os = "android", target_arch = "wasm32")))]
         {
-            let proxy = event_loop.create_proxy();
+            let proxy = app.event_loop.create_proxy();
             Some(Box::new(move |res| match proxy.send_event(res) {
                 Ok(it) => it,
                 // ShaderModuleDescriptor is not `Debug`, so can't use unwrap/expect
@@ -472,12 +366,6 @@ pub fn start(
             }))
         },
     );
-
-    let window = winit::window::WindowBuilder::new()
-        .with_title("Rust GPU - wgpu")
-        .with_inner_size(winit::dpi::LogicalSize::new(1280.0, 720.0))
-        .build(&event_loop)
-        .unwrap();
 
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
@@ -493,15 +381,13 @@ pub fn start(
                 .expect("couldn't append canvas to document body");
             wasm_bindgen_futures::spawn_local(run(
                 options.clone(),
-                event_loop,
                 window,
                 initial_shader,
             ));
         } else {
             futures::executor::block_on(run(
                 options.clone(),
-                event_loop,
-                window,
+                app,
                 initial_shader,
             ));
         }

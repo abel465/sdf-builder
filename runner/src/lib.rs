@@ -3,6 +3,8 @@ use structopt::StructOpt;
 use strum::{Display, EnumString};
 
 mod graphics;
+mod app;
+mod context;
 
 #[derive(EnumString, Display, PartialEq, Eq, Copy, Clone)]
 pub enum RustGPUShader {
@@ -13,7 +15,7 @@ pub enum RustGPUShader {
     KochSnowflake,
 }
 
-struct CompiledShaderModules {
+pub struct CompiledShaderModules {
     named_spv_modules: Vec<(Option<String>, wgpu::ShaderModuleDescriptorSpirV<'static>)>,
 }
 
