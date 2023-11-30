@@ -1,69 +1,29 @@
-use crate::{maybe_watch, state, window::Window, CompiledShaderModules, Options};
-
-use winit::{
-    event::{Event, KeyboardInput, VirtualKeyCode, WindowEvent},
-    event_loop::ControlFlow,
+use crate::{
+    maybe_watch, state,
+    window::{Window, WindowEvents},
+    CompiledShaderModules, Options,
 };
+
+use winit::event_loop::ControlFlow;
 
 async fn run(options: Options, window: Window, compiled_shader_modules: CompiledShaderModules) {
     let mut app = state::State::new(&window, compiled_shader_modules, options).await;
 
-    window.event_loop.run(move |event, _, control_flow| {
-        let window = &window.window;
-
-        *control_flow = ControlFlow::Wait;
-        match event {
-            Event::MainEventsCleared => {
-                window.request_redraw();
+    window.run(move |event| match event {
+        WindowEvents::Resized { size } => app.resize(size),
+        WindowEvents::Draw { control_flow } => {
+            if let Err(wgpu::SurfaceError::OutOfMemory) = app.update_and_render() {
+                *control_flow = ControlFlow::Exit
             }
-            Event::RedrawRequested(_) => {
-                // TODO: only redraw if needed
-                window.request_redraw();
-
-                match app.update_and_render() {
-                    Ok(()) => (),
-                    Err(wgpu::SurfaceError::OutOfMemory) => {
-                        *control_flow = ControlFlow::Exit;
-                        ()
-                    }
-                    _ => (),
-                }
-            }
-            Event::WindowEvent { event, window_id } if window_id == window.id() => match event {
-                WindowEvent::Resized(size) => app.resize(size),
-                WindowEvent::CloseRequested
-                | WindowEvent::KeyboardInput {
-                    input:
-                        KeyboardInput {
-                            virtual_keycode: Some(VirtualKeyCode::Escape),
-                            ..
-                        },
-                    ..
-                } => {
-                    *control_flow = ControlFlow::Exit;
-                }
-                WindowEvent::MouseInput { state, button, .. } => {
-                    app.mouse_input(state, button);
-                }
-                WindowEvent::MouseWheel { delta, .. } => {
-                    app.mouse_scroll(delta);
-                }
-                WindowEvent::CursorMoved { position, .. } => {
-                    app.mouse_move(position);
-                }
-                _ => {}
-            },
-            Event::UserEvent(new_module) => {
-                app.new_module(new_module);
-                window.request_redraw();
-                *control_flow = ControlFlow::Poll;
-            }
-            _ => {}
         }
+        WindowEvents::MouseInput { state, button } => app.mouse_input(state, button),
+        WindowEvents::MouseWheel { delta } => app.mouse_scroll(delta),
+        WindowEvents::MouseMoved { position } => app.mouse_move(position),
+
+        WindowEvents::UserEvent(new_module) => app.new_module(new_module),
     });
 }
 
-#[allow(clippy::match_wild_err_arm)]
 pub fn start(options: &Options) {
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
