@@ -1,6 +1,6 @@
 use crate::{
-    context::GraphicsContext, controller::Controller, render_pass::RenderPass, window::Window,
-    CompiledShaderModules, Options,
+    context::GraphicsContext, controller::Controller, render_pass::RenderPass,
+    shader::CompiledShaderModules, window::Window, Options,
 };
 use std::time::Instant;
 

@@ -1,4 +1,4 @@
-use crate::CompiledShaderModules;
+use crate::shader::CompiledShaderModules;
 
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},

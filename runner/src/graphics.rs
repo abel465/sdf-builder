@@ -1,7 +1,8 @@
 use crate::{
-    maybe_watch, state,
+    shader::{maybe_watch, CompiledShaderModules},
+    state,
     window::{Window, WindowEvents},
-    CompiledShaderModules, Options,
+    Options,
 };
 
 use winit::event_loop::ControlFlow;

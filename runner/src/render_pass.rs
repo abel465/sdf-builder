@@ -1,6 +1,6 @@
 use shared::ShaderConstants;
 
-use crate::{context::GraphicsContext, CompiledShaderModules, Options};
+use crate::{context::GraphicsContext, shader::CompiledShaderModules, Options};
 
 #[cfg(not(target_arch = "wasm32"))]
 mod shaders {
