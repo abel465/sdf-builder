@@ -3,8 +3,10 @@ use structopt::StructOpt;
 use strum::{Display, EnumString};
 
 mod context;
+mod controller;
 mod graphics;
 mod render_pass;
+mod state;
 mod window;
 
 #[derive(EnumString, Display, PartialEq, Eq, Copy, Clone)]
