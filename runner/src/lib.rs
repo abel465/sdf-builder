@@ -1,9 +1,9 @@
 use structopt::StructOpt;
 use strum::{Display, EnumString};
 
+mod app;
 mod context;
 mod controller;
-mod graphics;
 mod render_pass;
 mod shader;
 mod state;
