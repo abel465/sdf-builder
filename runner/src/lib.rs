@@ -7,6 +7,7 @@ mod controller;
 mod render_pass;
 mod shader;
 mod state;
+mod ui;
 mod window;
 
 #[derive(EnumString, Display, PartialEq, Eq, Copy, Clone)]

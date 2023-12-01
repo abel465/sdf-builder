@@ -26,6 +26,9 @@ structopt = "0.3"
 strum = { version = "0.25", default_features = false, features = ["std", "derive"] }
 bytemuck = "1.14"
 glam = "0.24.2"
+egui = { version = "0.23.0", features = ["extra_debug_asserts"] }
+egui-wgpu = { version = "0.23.0" }
+egui-winit = { version = "0.23.0" }
 
 [target.'cfg(not(any(target_arch = "wasm32")))'.dependencies]
 env_logger = "0.10.0"

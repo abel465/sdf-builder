@@ -1,6 +1,7 @@
 use shared::ShaderConstants;
+use wgpu::TextureView;
 
-use crate::{context::GraphicsContext, shader::CompiledShaderModules, Options};
+use crate::{context::GraphicsContext, shader::CompiledShaderModules, ui::Ui, Options};
 
 #[cfg(not(target_arch = "wasm32"))]
 mod shaders {
@@ -17,6 +18,7 @@ mod shaders {
 pub struct RenderPass {
     pipeline_layout: wgpu::PipelineLayout,
     render_pipeline: wgpu::RenderPipeline,
+    ui_renderer: egui_wgpu::Renderer,
     options: Options,
 }
 
@@ -45,17 +47,23 @@ impl RenderPass {
             compiled_shader_modules,
         );
 
+        let ui_renderer = egui_wgpu::Renderer::new(&ctx.device, ctx.config.format, None, 1);
+
         Self {
             pipeline_layout,
             render_pipeline,
+            ui_renderer,
             options,
         }
     }
 
     pub fn render(
-        &self,
+        &mut self,
         ctx: &GraphicsContext,
         push_constants: ShaderConstants,
+        egui_state: &mut egui_winit::State,
+        window: &winit::window::Window,
+        ui: &Ui,
     ) -> Result<(), wgpu::SurfaceError> {
         let output = match ctx.surface.get_current_texture() {
             Ok(surface_texture) => surface_texture,
@@ -73,12 +81,29 @@ impl RenderPass {
         let output_view = output
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
+
+        self.render_shader(ctx, &output_view, push_constants);
+        self.render_ui(ctx, &output_view, egui_state, window, ui);
+
+        output.present();
+
+        Ok(())
+    }
+
+    fn render_shader(
+        &mut self,
+        ctx: &GraphicsContext,
+        output_view: &TextureView,
+        push_constants: ShaderConstants,
+    ) {
         let mut encoder = ctx
             .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Shader Encoder"),
+            });
         {
             let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: None,
+                label: Some("Shader Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &output_view,
                     resolve_target: None,
@@ -100,9 +125,66 @@ impl RenderPass {
         }
 
         ctx.queue.submit(Some(encoder.finish()));
-        output.present();
+    }
 
-        Ok(())
+    fn render_ui(
+        &mut self,
+        ctx: &GraphicsContext,
+        output_view: &TextureView,
+        egui_state: &mut egui_winit::State,
+        window: &winit::window::Window,
+        ui: &Ui,
+    ) {
+        let full_output = ui.prepare(egui_state.take_egui_input(&window));
+
+        egui_state.handle_platform_output(&window, &ui.context, full_output.platform_output);
+
+        let clipped_primitives: &[egui::ClippedPrimitive] =
+            &ui.context.tessellate(full_output.shapes);
+
+        let screen_descriptor = egui_wgpu::renderer::ScreenDescriptor {
+            size_in_pixels: [ctx.config.width, ctx.config.height],
+            pixels_per_point: window.scale_factor() as f32,
+        };
+
+        for (id, delta) in &full_output.textures_delta.set {
+            self.ui_renderer
+                .update_texture(&ctx.device, &ctx.queue, *id, &delta);
+        }
+
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("UI Encoder"),
+            });
+
+        self.ui_renderer.update_buffers(
+            &ctx.device,
+            &ctx.queue,
+            &mut encoder,
+            clipped_primitives,
+            &screen_descriptor,
+        );
+
+        {
+            let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("UI Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &output_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: true,
+                    },
+                })],
+                depth_stencil_attachment: None,
+            });
+
+            self.ui_renderer
+                .render(&mut rpass, clipped_primitives, &screen_descriptor);
+        }
+
+        ctx.queue.submit(Some(encoder.finish()));
     }
 
     pub fn new_module(&mut self, ctx: &GraphicsContext, new_module: CompiledShaderModules) {
