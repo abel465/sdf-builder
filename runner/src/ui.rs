@@ -12,13 +12,13 @@ pub struct UiState {
 }
 
 impl UiState {
-    pub fn new() -> Self {
+    pub fn new(active_shader: RustGPUShader) -> Self {
         Self {
             width: 0,
             height: 0,
             fps: 0,
             show_fps: false,
-            active_shader: RustGPUShader::Mandelbrot,
+            active_shader,
         }
     }
 }

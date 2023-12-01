@@ -44,13 +44,15 @@ impl State {
         let mut egui_state = egui_winit::State::new(&window.event_loop);
         egui_state.set_pixels_per_point(window.window.scale_factor() as f32);
 
+        let active_shader = options.shader;
+
         Self {
             rpass: RenderPass::new(&ctx, compiled_shader_modules, options),
             ctx,
             controller: Controller::new(),
             egui_winit_state: egui_state,
             ui: Ui::new(window.event_loop.create_proxy()),
-            ui_state: UiState::new(),
+            ui_state: UiState::new(active_shader),
             fps_counter: FpsCounter::new(),
             start_time: Instant::now(),
         }
