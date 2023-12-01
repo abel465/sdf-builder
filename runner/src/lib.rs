@@ -4,6 +4,7 @@ use strum::{Display, EnumString};
 mod app;
 mod context;
 mod controller;
+mod fps_counter;
 mod render_pass;
 mod shader;
 mod state;

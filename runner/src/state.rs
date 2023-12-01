@@ -1,6 +1,12 @@
 use crate::{
-    context::GraphicsContext, controller::Controller, render_pass::RenderPass,
-    shader::CompiledShaderModules, ui::Ui, window::Window, Options,
+    context::GraphicsContext,
+    controller::Controller,
+    fps_counter::FpsCounter,
+    render_pass::RenderPass,
+    shader::CompiledShaderModules,
+    ui::{Ui, UiState},
+    window::Window,
+    Options,
 };
 use std::time::Instant;
 
@@ -22,6 +28,8 @@ pub struct State {
     controller: Controller,
     egui_winit_state: egui_winit::State,
     ui: Ui,
+    ui_state: UiState,
+    fps_counter: FpsCounter,
     start_time: Instant,
 }
 
@@ -42,6 +50,8 @@ impl State {
             controller: Controller::new(),
             egui_winit_state: egui_state,
             ui: Ui::new(),
+            ui_state: UiState::new(),
+            fps_counter: FpsCounter::new(),
             start_time: Instant::now(),
         }
     }
@@ -81,8 +91,18 @@ impl State {
         push_constants: ShaderConstants,
         window: &winit::window::Window,
     ) -> Result<(), wgpu::SurfaceError> {
-        self.rpass
-            .render(&self.ctx, push_constants, &mut self.egui_winit_state, &window, &self.ui)
+        self.ui_state.width = self.ctx.config.width;
+        self.ui_state.height = self.ctx.config.height;
+        self.ui_state.fps = self.fps_counter.tick();
+
+        self.rpass.render(
+            &self.ctx,
+            push_constants,
+            &mut self.egui_winit_state,
+            &window,
+            &self.ui,
+            &mut self.ui_state,
+        )
     }
 
     pub fn update_and_render(
@@ -94,7 +114,9 @@ impl State {
     }
 
     pub fn ui_consumes_event(&mut self, event: &WindowEvent) -> bool {
-        self.egui_winit_state.on_event(&self.ui.context, event).consumed
+        self.egui_winit_state
+            .on_event(&self.ui.context, event)
+            .consumed
     }
 
     pub fn new_module(&mut self, new_module: CompiledShaderModules) {

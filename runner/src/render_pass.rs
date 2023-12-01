@@ -1,7 +1,12 @@
 use shared::ShaderConstants;
 use wgpu::TextureView;
 
-use crate::{context::GraphicsContext, shader::CompiledShaderModules, ui::Ui, Options};
+use crate::{
+    context::GraphicsContext,
+    shader::CompiledShaderModules,
+    ui::{Ui, UiState},
+    Options,
+};
 
 #[cfg(not(target_arch = "wasm32"))]
 mod shaders {
@@ -64,6 +69,7 @@ impl RenderPass {
         egui_state: &mut egui_winit::State,
         window: &winit::window::Window,
         ui: &Ui,
+        ui_state: &mut UiState,
     ) -> Result<(), wgpu::SurfaceError> {
         let output = match ctx.surface.get_current_texture() {
             Ok(surface_texture) => surface_texture,
@@ -83,7 +89,7 @@ impl RenderPass {
             .create_view(&wgpu::TextureViewDescriptor::default());
 
         self.render_shader(ctx, &output_view, push_constants);
-        self.render_ui(ctx, &output_view, egui_state, window, ui);
+        self.render_ui(ctx, &output_view, egui_state, window, ui, ui_state);
 
         output.present();
 
@@ -134,8 +140,9 @@ impl RenderPass {
         egui_state: &mut egui_winit::State,
         window: &winit::window::Window,
         ui: &Ui,
+        ui_state: &mut UiState,
     ) {
-        let full_output = ui.prepare(egui_state.take_egui_input(&window));
+        let full_output = ui.prepare(egui_state.take_egui_input(&window), ui_state);
 
         egui_state.handle_platform_output(&window, &ui.context, full_output.platform_output);
 
