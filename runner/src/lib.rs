@@ -33,5 +33,5 @@ pub struct Options {
 pub fn main() {
     let options: Options = Options::from_args();
 
-    app::start(&options);
+    app::start(options);
 }

@@ -3,10 +3,10 @@ use crate::{
     controller::Controller,
     fps_counter::FpsCounter,
     render_pass::RenderPass,
-    shader::CompiledShaderModules,
+    shader::{self, CompiledShaderModules},
     ui::{Ui, UiState},
     window::Window,
-    Options,
+    Options, RustGPUShader,
 };
 use std::time::Instant;
 
@@ -49,7 +49,7 @@ impl State {
             ctx,
             controller: Controller::new(),
             egui_winit_state: egui_state,
-            ui: Ui::new(),
+            ui: Ui::new(window.event_loop.create_proxy()),
             ui_state: UiState::new(),
             fps_counter: FpsCounter::new(),
             start_time: Instant::now(),
@@ -99,7 +99,7 @@ impl State {
             &self.ctx,
             push_constants,
             &mut self.egui_winit_state,
-            &window,
+            window,
             &self.ui,
             &mut self.ui_state,
         )
@@ -119,7 +119,21 @@ impl State {
             .consumed
     }
 
-    pub fn new_module(&mut self, new_module: CompiledShaderModules) {
+    pub fn new_module(&mut self, shader: RustGPUShader, new_module: CompiledShaderModules) {
+        self.ui_state.active_shader = shader;
         self.rpass.new_module(&self.ctx, new_module);
+    }
+
+    pub fn switch_shader(&mut self, shader: RustGPUShader) {
+        self.new_module(
+            shader,
+            shader::maybe_watch(
+                &Options {
+                    force_spirv_passthru: false,
+                    shader,
+                },
+                None,
+            ),
+        )
     }
 }

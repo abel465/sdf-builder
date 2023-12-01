@@ -1,4 +1,4 @@
-use crate::shader::CompiledShaderModules;
+use crate::{shader::CompiledShaderModules, RustGPUShader};
 
 use winit::{
     dpi::PhysicalSize,
@@ -6,8 +6,13 @@ use winit::{
     window::{self, WindowBuilder},
 };
 
+pub enum UserEvent {
+    NewModule(RustGPUShader, CompiledShaderModules),
+    SwitchShader(RustGPUShader),
+}
+
 pub struct Window {
-    pub event_loop: EventLoop<CompiledShaderModules>,
+    pub event_loop: EventLoop<UserEvent>,
     pub window: window::Window,
 }
 

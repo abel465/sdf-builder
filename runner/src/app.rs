@@ -1,7 +1,10 @@
 use crate::{
     shader::{maybe_watch, CompiledShaderModules},
     state,
-    window::Window,
+    window::{
+        UserEvent::{self, NewModule, SwitchShader},
+        Window,
+    },
     Options,
 };
 
@@ -50,16 +53,21 @@ async fn run(options: Options, window: Window, compiled_shader_modules: Compiled
                     _ => {}
                 }
             }
-            Event::UserEvent(new_module) => {
-                app.new_module(new_module);
-                window.request_redraw();
-            }
+            Event::UserEvent(event) => match event {
+                NewModule(shader, new_module) => {
+                    app.new_module(shader, new_module);
+                    window.request_redraw();
+                }
+                SwitchShader(shader) => {
+                    app.switch_shader(shader);
+                }
+            },
             _ => {}
         }
     });
 }
 
-pub fn start(options: &Options) {
+pub fn start(options: Options) {
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
             std::panic::set_hook(Box::new(console_error_panic_hook::hook));
@@ -73,14 +81,16 @@ pub fn start(options: &Options) {
 
     // Build the shader before we pop open a window, since it might take a while.
     let initial_shader = maybe_watch(
-        options,
+        &options,
         #[cfg(not(target_arch = "wasm32"))]
         {
             let proxy = window.event_loop.create_proxy();
-            Some(Box::new(move |res| match proxy.send_event(res) {
-                Ok(it) => it,
-                // ShaderModuleDescriptor is not `Debug`, so can't use unwrap/expect
-                Err(_err) => panic!("Event loop dead"),
+            Some(Box::new(move |res| {
+                match proxy.send_event(UserEvent::NewModule(options.shader, res)) {
+                    Ok(it) => it,
+                    // ShaderModuleDescriptor is not `Debug`, so can't use unwrap/expect
+                    Err(_err) => panic!("Event loop dead"),
+                }
             }))
         },
     );
