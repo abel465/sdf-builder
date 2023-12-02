@@ -66,9 +66,8 @@ impl RenderPass {
         &mut self,
         ctx: &GraphicsContext,
         push_constants: ShaderConstants,
-        egui_state: &mut egui_winit::State,
         window: &winit::window::Window,
-        ui: &Ui,
+        ui: &mut Ui,
         ui_state: &mut UiState,
     ) -> Result<(), wgpu::SurfaceError> {
         let output = match ctx.surface.get_current_texture() {
@@ -89,7 +88,7 @@ impl RenderPass {
             .create_view(&wgpu::TextureViewDescriptor::default());
 
         self.render_shader(ctx, &output_view, push_constants);
-        self.render_ui(ctx, &output_view, egui_state, window, ui, ui_state);
+        self.render_ui(ctx, &output_view, window, ui, ui_state);
 
         output.present();
 
@@ -137,24 +136,18 @@ impl RenderPass {
         &mut self,
         ctx: &GraphicsContext,
         output_view: &TextureView,
-        egui_state: &mut egui_winit::State,
         window: &winit::window::Window,
-        ui: &Ui,
+        ui: &mut Ui,
         ui_state: &mut UiState,
     ) {
-        let full_output = ui.prepare(egui_state.take_egui_input(&window), ui_state);
-
-        egui_state.handle_platform_output(&window, &ui.context, full_output.platform_output);
-
-        let clipped_primitives: &[egui::ClippedPrimitive] =
-            &ui.context.tessellate(full_output.shapes);
+        let (clipped_primitives, textures_delta) = ui.prepare(window, ui_state);
 
         let screen_descriptor = egui_wgpu::renderer::ScreenDescriptor {
             size_in_pixels: [ctx.config.width, ctx.config.height],
             pixels_per_point: window.scale_factor() as f32,
         };
 
-        for (id, delta) in &full_output.textures_delta.set {
+        for (id, delta) in &textures_delta.set {
             self.ui_renderer
                 .update_texture(&ctx.device, &ctx.queue, *id, &delta);
         }
@@ -169,7 +162,7 @@ impl RenderPass {
             &ctx.device,
             &ctx.queue,
             &mut encoder,
-            clipped_primitives,
+            &clipped_primitives,
             &screen_descriptor,
         );
 
@@ -187,8 +180,12 @@ impl RenderPass {
                 depth_stencil_attachment: None,
             });
 
+            for id in &textures_delta.free {
+                self.ui_renderer.free_texture(id);
+            }
+
             self.ui_renderer
-                .render(&mut rpass, clipped_primitives, &screen_descriptor);
+                .render(&mut rpass, &clipped_primitives, &screen_descriptor);
         }
 
         ctx.queue.submit(Some(encoder.finish()));

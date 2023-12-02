@@ -1,7 +1,13 @@
-use egui::{pos2, Context, FullOutput, RawInput};
-use winit::event_loop::EventLoopProxy;
+use egui::{
+    epaint::{textures::TexturesDelta, ClippedPrimitive},
+    pos2, Context,
+};
+use winit::{event::WindowEvent, event_loop::EventLoopProxy};
 
-use crate::{window::UserEvent, RustGPUShader};
+use crate::{
+    window::{UserEvent, Window},
+    RustGPUShader,
+};
 
 pub struct UiState {
     pub width: u32,
@@ -24,22 +30,46 @@ impl UiState {
 }
 
 pub struct Ui {
-    pub context: Context,
+    context: Context,
+    egui_winit_state: egui_winit::State,
     event_proxy: EventLoopProxy<UserEvent>,
 }
 
 impl Ui {
-    pub fn new(event_proxy: EventLoopProxy<UserEvent>) -> Self {
+    pub fn new(window: &Window) -> Self {
+        let event_loop = &window.event_loop;
+        let mut egui_winit_state = egui_winit::State::new(event_loop);
+        egui_winit_state.set_pixels_per_point(window.window.scale_factor() as f32);
+
         Self {
             context: Context::default(),
-            event_proxy,
+            egui_winit_state,
+            event_proxy: event_loop.create_proxy(),
         }
     }
 
-    pub fn prepare(&self, raw_input: RawInput, ui_state: &mut UiState) -> FullOutput {
-        self.context.run(raw_input, |ctx| {
+    pub fn consumes_event(&mut self, event: &WindowEvent) -> bool {
+        self.egui_winit_state
+            .on_event(&self.context, &event)
+            .consumed
+    }
+
+    pub fn prepare(
+        &mut self,
+        window: &winit::window::Window,
+        ui_state: &mut UiState,
+    ) -> (Vec<ClippedPrimitive>, TexturesDelta) {
+        let raw_input = self.egui_winit_state.take_egui_input(&window);
+        let full_output = self.context.run(raw_input, |ctx| {
             self.ui(ctx, ui_state);
-        })
+        });
+        self.egui_winit_state.handle_platform_output(
+            &window,
+            &self.context,
+            full_output.platform_output,
+        );
+        let clipped_primitives = self.context.tessellate(full_output.shapes);
+        (clipped_primitives, full_output.textures_delta)
     }
 
     fn switch_shader(&self, shader: RustGPUShader) {

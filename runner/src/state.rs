@@ -26,7 +26,6 @@ pub struct State {
     rpass: RenderPass,
     ctx: GraphicsContext,
     controller: Controller,
-    egui_winit_state: egui_winit::State,
     ui: Ui,
     ui_state: UiState,
     fps_counter: FpsCounter,
@@ -41,17 +40,13 @@ impl State {
     ) -> Self {
         let ctx = GraphicsContext::new(&window, &options).await;
 
-        let mut egui_state = egui_winit::State::new(&window.event_loop);
-        egui_state.set_pixels_per_point(window.window.scale_factor() as f32);
-
         let active_shader = options.shader;
 
         Self {
             rpass: RenderPass::new(&ctx, compiled_shader_modules, options),
             ctx,
             controller: Controller::new(),
-            egui_winit_state: egui_state,
-            ui: Ui::new(window.event_loop.create_proxy()),
+            ui: Ui::new(window),
             ui_state: UiState::new(active_shader),
             fps_counter: FpsCounter::new(),
             start_time: Instant::now(),
@@ -100,9 +95,8 @@ impl State {
         self.rpass.render(
             &self.ctx,
             push_constants,
-            &mut self.egui_winit_state,
             window,
-            &self.ui,
+            &mut self.ui,
             &mut self.ui_state,
         )
     }
@@ -116,9 +110,7 @@ impl State {
     }
 
     pub fn ui_consumes_event(&mut self, event: &WindowEvent) -> bool {
-        self.egui_winit_state
-            .on_event(&self.ui.context, event)
-            .consumed
+        self.ui.consumes_event(event)
     }
 
     pub fn new_module(&mut self, shader: RustGPUShader, new_module: CompiledShaderModules) {
