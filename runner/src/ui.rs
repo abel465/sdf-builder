@@ -2,6 +2,7 @@ use egui::{
     epaint::{textures::TexturesDelta, ClippedPrimitive},
     pos2, Context, Layout,
 };
+use strum::IntoEnumIterator;
 use winit::{event::WindowEvent, event_loop::EventLoopProxy};
 
 use crate::{
@@ -84,13 +85,9 @@ impl Ui {
             .show(ctx, |ui| {
                 ui.heading("Shaders");
                 ui.with_layout(Layout::default().with_cross_justify(true), |ui| {
-                    for (shader, name) in [
-                        (RustGPUShader::Mandelbrot, "Mandelbrot"),
-                        (RustGPUShader::KochSnowflake, "Koch Snowflake"),
-                        (RustGPUShader::SierpinskiTriangle, "Sierpinski Triangle"),
-                    ] {
+                    for shader in RustGPUShader::iter() {
                         if ui
-                            .selectable_label(ui_state.active_shader == shader, name)
+                            .selectable_label(ui_state.active_shader == shader, shader.to_string())
                             .clicked()
                         {
                             if ui_state.active_shader != shader {

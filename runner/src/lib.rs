@@ -1,6 +1,6 @@
 #![feature(variant_count)]
 use structopt::StructOpt;
-use strum::{Display, EnumString};
+use strum::{Display, EnumIter, EnumString};
 
 mod app;
 mod context;
@@ -12,7 +12,7 @@ mod state;
 mod ui;
 mod window;
 
-#[derive(EnumString, Display, PartialEq, Eq, Copy, Clone)]
+#[derive(EnumString, EnumIter, Display, PartialEq, Eq, Copy, Clone)]
 pub enum RustGPUShader {
     Mandelbrot,
     RayMarching,
