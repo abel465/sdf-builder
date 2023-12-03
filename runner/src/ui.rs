@@ -1,6 +1,6 @@
 use egui::{
     epaint::{textures::TexturesDelta, ClippedPrimitive},
-    pos2, Context,
+    pos2, Context, Layout,
 };
 use winit::{event::WindowEvent, event_loop::EventLoopProxy};
 
@@ -76,21 +76,6 @@ impl Ui {
         let _ = self.event_proxy.send_event(UserEvent::SwitchShader(shader));
     }
 
-    fn switch_shader_button(
-        &self,
-        ui: &mut egui::Ui,
-        ui_state: &UiState,
-        shader: RustGPUShader,
-        label: &str,
-    ) {
-        if ui
-            .selectable_label(ui_state.active_shader == shader, label)
-            .clicked()
-        {
-            self.switch_shader(shader)
-        }
-    }
-
     fn ui(&self, ctx: &Context, ui_state: &mut UiState) {
         egui::Window::new("main")
             .title_bar(false)
@@ -98,38 +83,21 @@ impl Ui {
             .default_width(110.0)
             .show(ctx, |ui| {
                 ui.heading("Shaders");
-                ui.with_layout(egui::Layout::default().with_cross_justify(true), |ui| {
-                    self.switch_shader_button(
-                        ui,
-                        ui_state,
-                        RustGPUShader::Mandelbrot,
-                        "Mandelbrot",
-                    );
-                    self.switch_shader_button(
-                        ui,
-                        ui_state,
-                        RustGPUShader::KochSnowflake,
-                        "Koch Snowflake",
-                    );
-                    self.switch_shader_button(
-                        ui,
-                        ui_state,
-                        RustGPUShader::SierpinskiTriangle,
-                        "Sierpinski Triangle",
-                    );
-                    // ui.selectable_label(
-                    //     ui_state.active_shader == ,
-                    //     "Mandelbrot",
-                    // )
-                    // .clicked(self.switch_shader(shader));
-                    // ui.selectable_label(
-                    //     ui_state.active_shader == RustGPUShader::KochSnowflake,
-                    //     "Koch Snowflake",
-                    // );
-                    // ui.selectable_label(
-                    //     ui_state.active_shader == RustGPUShader::SierpinskiTriangle,
-                    //     "Sierpinski Triangle",
-                    // );
+                ui.with_layout(Layout::default().with_cross_justify(true), |ui| {
+                    for (shader, name) in [
+                        (RustGPUShader::Mandelbrot, "Mandelbrot"),
+                        (RustGPUShader::KochSnowflake, "Koch Snowflake"),
+                        (RustGPUShader::SierpinskiTriangle, "Sierpinski Triangle"),
+                    ] {
+                        if ui
+                            .selectable_label(ui_state.active_shader == shader, name)
+                            .clicked()
+                        {
+                            if ui_state.active_shader != shader {
+                                self.switch_shader(shader)
+                            }
+                        }
+                    }
                 });
                 ui.separator();
                 ui.checkbox(&mut ui_state.show_fps, "fps counter")

@@ -8,7 +8,7 @@ use crate::{
     window::Window,
     Options, RustGPUShader,
 };
-use std::time::Instant;
+use std::{mem::variant_count, time::Instant};
 
 use shared::ShaderConstants;
 use winit::{
@@ -25,7 +25,7 @@ pub struct BaseShaderConstants {
 pub struct State {
     rpass: RenderPass,
     ctx: GraphicsContext,
-    controller: Controller,
+    controllers: [Controller; variant_count::<RustGPUShader>()],
     ui: Ui,
     ui_state: UiState,
     fps_counter: FpsCounter,
@@ -38,19 +38,23 @@ impl State {
         compiled_shader_modules: CompiledShaderModules,
         options: Options,
     ) -> Self {
-        let ctx = GraphicsContext::new(&window, &options).await;
+        let ctx = GraphicsContext::new(&window.window, &options).await;
 
         let active_shader = options.shader;
 
         Self {
             rpass: RenderPass::new(&ctx, compiled_shader_modules, options),
             ctx,
-            controller: Controller::new(),
+            controllers: [Controller::new(); variant_count::<RustGPUShader>()],
             ui: Ui::new(window),
             ui_state: UiState::new(active_shader),
             fps_counter: FpsCounter::new(),
             start_time: Instant::now(),
         }
+    }
+
+    fn controller(&mut self) -> &mut Controller {
+        &mut self.controllers[self.ui_state.active_shader as usize]
     }
 
     pub fn resize(&mut self, size: PhysicalSize<u32>) {
@@ -64,23 +68,24 @@ impl State {
     }
 
     pub fn mouse_input(&mut self, state: ElementState, button: MouseButton) {
-        self.controller.mouse_input(state, button);
+        self.controller().mouse_input(state, button);
     }
 
     pub fn mouse_move(&mut self, position: PhysicalPosition<f64>) {
-        self.controller.mouse_move(position);
+        self.controller().mouse_move(position);
     }
 
     pub fn mouse_scroll(&mut self, delta: MouseScrollDelta) {
-        self.controller.mouse_scroll(delta);
+        self.controller().mouse_scroll(delta);
     }
 
     pub fn update(&mut self) -> ShaderConstants {
-        self.controller.update(BaseShaderConstants {
+        let base_shader_constants = BaseShaderConstants {
             width: self.ctx.config.width,
             height: self.ctx.config.height,
             time: self.start_time.elapsed().as_secs_f32(),
-        })
+        };
+        self.controller().update(base_shader_constants)
     }
 
     pub fn render(

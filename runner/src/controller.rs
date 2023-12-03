@@ -5,6 +5,7 @@ use winit::{dpi::PhysicalPosition, event::MouseButton};
 
 use crate::state::BaseShaderConstants;
 
+#[derive(Clone, Copy)]
 pub struct Controller {
     cursor: Vec2,
     drag_start: Vec2,

@@ -1,4 +1,5 @@
-use crate::{window::Window, Options};
+use crate::Options;
+use winit::window::Window;
 
 pub struct GraphicsContext {
     pub surface: wgpu::Surface,
@@ -16,7 +17,7 @@ impl GraphicsContext {
             dx12_shader_compiler: wgpu::util::dx12_shader_compiler_from_env().unwrap_or_default(),
         });
 
-        let initial_surface = unsafe { instance.create_surface(&window.window) }
+        let initial_surface = unsafe { instance.create_surface(&window) }
             .expect("Failed to create surface from window");
 
         let adapter = wgpu::util::initialize_adapter_from_env_or_default(
@@ -67,12 +68,8 @@ impl GraphicsContext {
 
                 (surface, surface_config)
             };
-        let (surface, config) = auto_configure_surface(
-            &adapter,
-            &device,
-            initial_surface,
-            window.window.inner_size(),
-        );
+        let (surface, config) =
+            auto_configure_surface(&adapter, &device, initial_surface, window.inner_size());
 
         GraphicsContext {
             surface,
