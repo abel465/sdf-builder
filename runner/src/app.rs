@@ -1,10 +1,7 @@
 use crate::{
     shader::{maybe_watch, CompiledShaderModules},
     state,
-    window::{
-        UserEvent::{self, NewModule, SwitchShader},
-        Window,
-    },
+    window::{UserEvent, Window},
     Options,
 };
 
@@ -54,12 +51,15 @@ async fn run(options: Options, window: Window, compiled_shader_modules: Compiled
                 }
             }
             Event::UserEvent(event) => match event {
-                NewModule(shader, new_module) => {
+                UserEvent::NewModule(shader, new_module) => {
                     app.new_module(shader, new_module);
                     window.request_redraw();
                 }
-                SwitchShader(shader) => {
+                UserEvent::SwitchShader(shader) => {
                     app.switch_shader(shader);
+                }
+                UserEvent::ToggleVSync(enabled) => {
+                    app.toggle_vsync(enabled);
                 }
             },
             _ => {}

@@ -15,6 +15,7 @@ pub struct UiState {
     pub height: u32,
     pub fps: usize,
     pub show_fps: bool,
+    pub vsync: bool,
     pub active_shader: RustGPUShader,
 }
 
@@ -25,6 +26,7 @@ impl UiState {
             height: 0,
             fps: 0,
             show_fps: false,
+            vsync: true,
             active_shader,
         }
     }
@@ -73,8 +75,8 @@ impl Ui {
         (clipped_primitives, full_output.textures_delta)
     }
 
-    fn switch_shader(&self, shader: RustGPUShader) {
-        let _ = self.event_proxy.send_event(UserEvent::SwitchShader(shader));
+    fn send_event(&self, event: UserEvent) {
+        let _ = self.event_proxy.send_event(event);
     }
 
     fn ui(&self, ctx: &Context, ui_state: &mut UiState) {
@@ -91,13 +93,16 @@ impl Ui {
                             .clicked()
                         {
                             if ui_state.active_shader != shader {
-                                self.switch_shader(shader)
+                                self.send_event(UserEvent::SwitchShader(shader));
                             }
                         }
                     }
                 });
                 ui.separator();
-                ui.checkbox(&mut ui_state.show_fps, "fps counter")
+                ui.checkbox(&mut ui_state.show_fps, "fps counter");
+                if ui.checkbox(&mut ui_state.vsync, "V-Sync").clicked() {
+                    self.send_event(UserEvent::ToggleVSync(ui_state.vsync));
+                }
             });
         if ui_state.show_fps {
             egui::Window::new("fps")

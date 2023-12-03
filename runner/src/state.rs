@@ -135,4 +135,15 @@ impl State {
             ),
         )
     }
+
+    pub fn toggle_vsync(&mut self, enabled: bool) {
+        self.ctx.config.present_mode = if enabled {
+            wgpu::PresentMode::AutoVsync
+        } else {
+            wgpu::PresentMode::AutoNoVsync
+        };
+        self.ctx
+            .surface
+            .configure(&self.ctx.device, &self.ctx.config);
+    }
 }
