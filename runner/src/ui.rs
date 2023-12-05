@@ -6,6 +6,7 @@ use strum::IntoEnumIterator;
 use winit::{event::WindowEvent, event_loop::EventLoopProxy};
 
 use crate::{
+    shaders,
     window::{UserEvent, Window},
     RustGPUShader,
 };
@@ -17,6 +18,8 @@ pub struct UiState {
     pub show_fps: bool,
     pub vsync: bool,
     pub active_shader: RustGPUShader,
+
+    pub options: shaders::Options,
 }
 
 impl UiState {
@@ -28,6 +31,7 @@ impl UiState {
             show_fps: false,
             vsync: true,
             active_shader,
+            options: shaders::Options::new(),
         }
     }
 }
@@ -48,6 +52,35 @@ impl Ui {
             context: Context::default(),
             egui_winit_state,
             event_proxy: event_loop.create_proxy(),
+        }
+    }
+
+    fn shader_options(&self, ui_state: &mut UiState, ui: &mut egui::Ui) {
+        match ui_state.active_shader {
+            RustGPUShader::Mandelbrot => {
+                let options = &mut ui_state.options.mandelbrot;
+                ui.horizontal(|ui| {
+                    ui.label("Exponent:");
+                    ui.add(
+                        egui::DragValue::new(&mut options.exponent)
+                            .clamp_range(1.0..=6.0)
+                            .speed(0.1),
+                    );
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Num Iterations:");
+                    ui.add(
+                        egui::DragValue::new(&mut options.num_iterations)
+                            .clamp_range(2..=200)
+                            .speed(1),
+                    );
+                });
+                ui.separator();
+            }
+            RustGPUShader::RayMarching => {}
+            RustGPUShader::RayMarching2D => {}
+            RustGPUShader::SierpinskiTriangle => {}
+            RustGPUShader::KochSnowflake => {}
         }
     }
 
@@ -99,6 +132,7 @@ impl Ui {
                     }
                 });
                 ui.separator();
+                self.shader_options(ui_state, ui);
                 ui.checkbox(&mut ui_state.show_fps, "fps counter");
                 if ui.checkbox(&mut ui_state.vsync, "V-Sync").clicked() {
                     self.send_event(UserEvent::ToggleVSync(ui_state.vsync));

@@ -8,6 +8,7 @@ mod controller;
 mod fps_counter;
 mod render_pass;
 mod shader;
+mod shaders;
 mod state;
 mod ui;
 mod window;

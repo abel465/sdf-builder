@@ -1,6 +1,6 @@
 use crate::{
     context::GraphicsContext,
-    controller::Controller,
+    controller::{new_controller, Controller},
     fps_counter::FpsCounter,
     render_pass::RenderPass,
     shader::{self, CompiledShaderModules},
@@ -8,28 +8,20 @@ use crate::{
     window::Window,
     Options, RustGPUShader,
 };
-use std::{mem::variant_count, time::Instant};
+use strum::IntoEnumIterator;
 
-use shared::ShaderConstants;
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
     event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent},
 };
 
-pub struct BaseShaderConstants {
-    pub width: u32,
-    pub height: u32,
-    pub time: f32,
-}
-
 pub struct State {
     rpass: RenderPass,
     ctx: GraphicsContext,
-    controllers: [Controller; variant_count::<RustGPUShader>()],
+    controllers: Vec<Box<dyn Controller>>,
     ui: Ui,
     ui_state: UiState,
     fps_counter: FpsCounter,
-    start_time: Instant,
 }
 
 impl State {
@@ -40,20 +32,21 @@ impl State {
     ) -> Self {
         let ctx = GraphicsContext::new(&window.window, &options).await;
 
-        let active_shader = options.shader;
+        let ui = Ui::new(window);
+
+        let ui_state = UiState::new(options.shader);
 
         Self {
             rpass: RenderPass::new(&ctx, compiled_shader_modules, options),
             ctx,
-            controllers: [Controller::new(); variant_count::<RustGPUShader>()],
-            ui: Ui::new(window),
-            ui_state: UiState::new(active_shader),
+            controllers: RustGPUShader::iter().map(|s| new_controller(s)).collect(),
+            ui,
+            ui_state,
             fps_counter: FpsCounter::new(),
-            start_time: Instant::now(),
         }
     }
 
-    fn controller(&mut self) -> &mut Controller {
+    fn controller(&mut self) -> &mut Box<dyn Controller> {
         &mut self.controllers[self.ui_state.active_shader as usize]
     }
 
@@ -79,23 +72,20 @@ impl State {
         self.controller().mouse_scroll(delta);
     }
 
-    pub fn update(&mut self) -> ShaderConstants {
-        let base_shader_constants = BaseShaderConstants {
-            width: self.ctx.config.width,
-            height: self.ctx.config.height,
-            time: self.start_time.elapsed().as_secs_f32(),
-        };
-        self.controller().update(base_shader_constants)
+    pub fn update(&mut self) {
+        let width = self.ctx.config.width;
+        let height = self.ctx.config.height;
+        let options = self.ui_state.options;
+        let controller = self.controller();
+        controller.update(width, height, options);
     }
 
-    pub fn render(
-        &mut self,
-        push_constants: ShaderConstants,
-        window: &winit::window::Window,
-    ) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&mut self, window: &winit::window::Window) -> Result<(), wgpu::SurfaceError> {
         self.ui_state.width = self.ctx.config.width;
         self.ui_state.height = self.ctx.config.height;
         self.ui_state.fps = self.fps_counter.tick();
+        let push_constants =
+            self.controllers[self.ui_state.active_shader as usize].push_constants();
 
         self.rpass.render(
             &self.ctx,
@@ -110,8 +100,8 @@ impl State {
         &mut self,
         window: &winit::window::Window,
     ) -> Result<(), wgpu::SurfaceError> {
-        let push_constants = self.update();
-        self.render(push_constants, &window)
+        self.update();
+        self.render(&window)
     }
 
     pub fn ui_consumes_event(&mut self, event: &WindowEvent) -> bool {

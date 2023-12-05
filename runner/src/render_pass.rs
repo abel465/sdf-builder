@@ -1,4 +1,3 @@
-use shared::ShaderConstants;
 use wgpu::TextureView;
 
 use crate::{
@@ -40,7 +39,7 @@ impl RenderPass {
                 bind_group_layouts: &[],
                 push_constant_ranges: &[wgpu::PushConstantRange {
                     stages: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                    range: 0..std::mem::size_of::<ShaderConstants>() as u32,
+                    range: 0..shared::push_constants::largest_size() as u32,
                 }],
             });
 
@@ -65,7 +64,7 @@ impl RenderPass {
     pub fn render(
         &mut self,
         ctx: &GraphicsContext,
-        push_constants: ShaderConstants,
+        push_constants: &[u8],
         window: &winit::window::Window,
         ui: &mut Ui,
         ui_state: &mut UiState,
@@ -99,7 +98,7 @@ impl RenderPass {
         &mut self,
         ctx: &GraphicsContext,
         output_view: &TextureView,
-        push_constants: ShaderConstants,
+        push_constants: &[u8],
     ) {
         let mut encoder = ctx
             .device
@@ -124,7 +123,7 @@ impl RenderPass {
             rpass.set_push_constants(
                 wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                 0,
-                bytemuck::bytes_of(&push_constants),
+                push_constants,
             );
             rpass.draw(0..3, 0..1);
         }
