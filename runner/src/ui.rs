@@ -75,12 +75,15 @@ impl Ui {
                             .speed(1),
                     );
                 });
-                ui.separator();
             }
             RustGPUShader::RayMarching => {}
             RustGPUShader::RayMarching2D => {}
             RustGPUShader::SierpinskiTriangle => {}
-            RustGPUShader::KochSnowflake => {}
+            RustGPUShader::KochSnowflake => {
+                let options = &mut ui_state.options.koch_snowflake;
+                ui.radio_value(&mut options.use_antisnowflake, false, "snowflake");
+                ui.radio_value(&mut options.use_antisnowflake, true, "antisnowflake");
+            }
         }
     }
 
@@ -133,6 +136,7 @@ impl Ui {
                 });
                 ui.separator();
                 self.shader_options(ui_state, ui);
+                ui.separator();
                 ui.checkbox(&mut ui_state.show_fps, "fps counter");
                 if ui.checkbox(&mut ui_state.vsync, "V-Sync").clicked() {
                     self.send_event(UserEvent::ToggleVSync(ui_state.vsync));
