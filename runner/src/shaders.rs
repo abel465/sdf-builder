@@ -3,6 +3,7 @@ pub mod mandelbrot;
 pub mod ray_marching;
 pub mod ray_marching_2d;
 pub mod sierpinski_triangle;
+pub mod sdfs_2d;
 
 #[derive(Clone, Copy)]
 pub struct Options {
@@ -11,6 +12,7 @@ pub struct Options {
     pub sierpinski_triangle: sierpinski_triangle::Options,
     pub ray_marching: ray_marching::Options,
     pub ray_marching_2d: ray_marching_2d::Options,
+    pub sdfs_2d: sdfs_2d::Options,
 }
 
 impl Options {
@@ -21,6 +23,7 @@ impl Options {
             sierpinski_triangle: sierpinski_triangle::Options::new(),
             ray_marching: ray_marching::Options::new(),
             ray_marching_2d: ray_marching_2d::Options::new(),
+            sdfs_2d: sdfs_2d::Options::new(),
         }
     }
 }

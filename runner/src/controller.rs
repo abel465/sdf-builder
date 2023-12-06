@@ -21,5 +21,6 @@ pub fn new_controller(shader: RustGPUShader) -> Box<dyn Controller> {
         RustGPUShader::RayMarching2D => Box::new(ray_marching_2d::Controller::new()),
         RustGPUShader::SierpinskiTriangle => Box::new(sierpinski_triangle::Controller::new()),
         RustGPUShader::KochSnowflake => Box::new(koch_snowflake::Controller::new()),
+        RustGPUShader::SDFs2D => Box::new(sdfs_2d::Controller::new()),
     }
 }

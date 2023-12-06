@@ -55,6 +55,7 @@ pub fn maybe_watch(
             RustGPUShader::RayMarching2D => "ray-marching-2d",
             RustGPUShader::SierpinskiTriangle => "sierpinski-triangle",
             RustGPUShader::KochSnowflake => "koch-snowflake",
+            RustGPUShader::SDFs2D => "sdfs-2d",
         };
         let manifest_dir = env!("CARGO_MANIFEST_DIR");
         let crate_path = [manifest_dir, "..", "shaders", crate_name]

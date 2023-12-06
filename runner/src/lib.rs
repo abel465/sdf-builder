@@ -20,6 +20,7 @@ pub enum RustGPUShader {
     RayMarching2D,
     SierpinskiTriangle,
     KochSnowflake,
+    SDFs2D,
 }
 
 #[derive(StructOpt, Clone)]

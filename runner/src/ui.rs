@@ -2,6 +2,7 @@ use egui::{
     epaint::{textures::TexturesDelta, ClippedPrimitive},
     pos2, Context, Layout,
 };
+use shared::push_constants::sdfs_2d::Shape;
 use strum::IntoEnumIterator;
 use winit::{event::WindowEvent, event_loop::EventLoopProxy};
 
@@ -81,8 +82,61 @@ impl Ui {
             RustGPUShader::SierpinskiTriangle => {}
             RustGPUShader::KochSnowflake => {
                 let options = &mut ui_state.options.koch_snowflake;
-                ui.radio_value(&mut options.use_antisnowflake, false, "snowflake");
-                ui.radio_value(&mut options.use_antisnowflake, true, "antisnowflake");
+                ui.radio_value(&mut options.use_antisnowflake, false, "Snowflake");
+                ui.radio_value(&mut options.use_antisnowflake, true, "AntiSnowflake");
+            }
+            RustGPUShader::SDFs2D => {
+                let options = &mut ui_state.options.sdfs_2d;
+                for shape in Shape::iter() {
+                    ui.radio_value(&mut options.shape, shape, shape.to_string());
+                }
+                let normalised_width = (ui_state.width as f32) / (ui_state.height as f32);
+                match options.shape {
+                    Shape::Circle => {
+                        ui.horizontal(|ui| {
+                            ui.label("Radius:");
+                            ui.add(
+                                egui::DragValue::new(&mut options.params.radius)
+                                    .clamp_range(0.0..=0.5)
+                                    .speed(0.01),
+                            );
+                        });
+                    }
+                    Shape::Rectangle => {
+                        ui.horizontal(|ui| {
+                            ui.label("Width:");
+                            ui.add(
+                                egui::DragValue::new(&mut options.params.width)
+                                    .clamp_range(0.0..=normalised_width)
+                                    .custom_parser(|s| {
+                                        s.parse::<f64>().and_then(|x| Ok(x / 2.0)).ok()
+                                    })
+                                    .speed(0.01),
+                            );
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("Height:");
+                            ui.add(
+                                egui::DragValue::new(&mut options.params.height)
+                                    .clamp_range(0.0..=1.0)
+                                    .custom_parser(|s| {
+                                        s.parse::<f64>().and_then(|x| Ok(x / 8.0)).ok()
+                                    })
+                                    .speed(0.01),
+                            );
+                        });
+                    }
+                    Shape::EquilateralTriangle => {
+                        ui.horizontal(|ui| {
+                            ui.label("Radius:");
+                            ui.add(
+                                egui::DragValue::new(&mut options.params.radius)
+                                    .clamp_range(0.0..=0.5)
+                                    .speed(0.01),
+                            );
+                        });
+                    }
+                }
             }
         }
     }
@@ -119,7 +173,7 @@ impl Ui {
         egui::Window::new("main")
             .title_bar(false)
             .resizable(false)
-            .default_width(110.0)
+            .default_width(128.0)
             .show(ctx, |ui| {
                 ui.heading("Shaders");
                 ui.with_layout(Layout::default().with_cross_justify(true), |ui| {
