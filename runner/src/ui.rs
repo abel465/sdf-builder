@@ -92,7 +92,7 @@ impl Ui {
                 }
                 let normalised_width = (ui_state.width as f32) / (ui_state.height as f32);
                 match options.shape {
-                    Shape::Circle => {
+                    Shape::Circle | Shape::EquilateralTriangle => {
                         ui.horizontal(|ui| {
                             ui.label("Radius:");
                             ui.add(
@@ -102,15 +102,12 @@ impl Ui {
                             );
                         });
                     }
-                    Shape::Rectangle => {
+                    Shape::Rectangle | Shape::IsoscelesTriangle => {
                         ui.horizontal(|ui| {
                             ui.label("Width:");
                             ui.add(
                                 egui::DragValue::new(&mut options.params.width)
                                     .clamp_range(0.0..=normalised_width)
-                                    .custom_parser(|s| {
-                                        s.parse::<f64>().and_then(|x| Ok(x / 2.0)).ok()
-                                    })
                                     .speed(0.01),
                             );
                         });
@@ -119,19 +116,6 @@ impl Ui {
                             ui.add(
                                 egui::DragValue::new(&mut options.params.height)
                                     .clamp_range(0.0..=1.0)
-                                    .custom_parser(|s| {
-                                        s.parse::<f64>().and_then(|x| Ok(x / 8.0)).ok()
-                                    })
-                                    .speed(0.01),
-                            );
-                        });
-                    }
-                    Shape::EquilateralTriangle => {
-                        ui.horizontal(|ui| {
-                            ui.label("Radius:");
-                            ui.add(
-                                egui::DragValue::new(&mut options.params.radius)
-                                    .clamp_range(0.0..=0.5)
                                     .speed(0.01),
                             );
                         });
