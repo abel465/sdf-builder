@@ -1,6 +1,6 @@
 use egui::{
     epaint::{textures::TexturesDelta, ClippedPrimitive},
-    pos2, Context, Layout,
+    pos2, Context, CursorIcon, Layout,
 };
 use shared::push_constants::sdfs_2d::Shape;
 use strum::IntoEnumIterator;
@@ -19,7 +19,7 @@ pub struct UiState {
     pub show_fps: bool,
     pub vsync: bool,
     pub active_shader: RustGPUShader,
-
+    pub cursor_icon: CursorIcon,
     pub options: shaders::Options,
 }
 
@@ -32,6 +32,7 @@ impl UiState {
             show_fps: false,
             vsync: true,
             active_shader,
+            cursor_icon: CursorIcon::default(),
             options: shaders::Options::new(),
         }
     }
@@ -56,7 +57,7 @@ impl Ui {
         }
     }
 
-    fn shader_options(&self, ui_state: &mut UiState, ui: &mut egui::Ui) {
+    fn shader_options(&self, ctx: &Context, ui_state: &mut UiState, ui: &mut egui::Ui) {
         match ui_state.active_shader {
             RustGPUShader::Mandelbrot => {
                 let options = &mut ui_state.options.mandelbrot;
@@ -87,6 +88,14 @@ impl Ui {
             }
             RustGPUShader::SDFs2D => {
                 let options = &mut ui_state.options.sdfs_2d;
+                ctx.set_cursor_icon(if options.is_dragging {
+                    CursorIcon::Grabbing
+                } else if options.can_drag {
+                    CursorIcon::Grab
+                } else {
+                    CursorIcon::Default
+                });
+
                 for shape in Shape::iter() {
                     ui.radio_value(&mut options.shape, shape, shape.to_string());
                 }
@@ -120,6 +129,7 @@ impl Ui {
                             );
                         });
                     }
+                    Shape::Triangle => {}
                 }
             }
         }
@@ -173,7 +183,7 @@ impl Ui {
                     }
                 });
                 ui.separator();
-                self.shader_options(ui_state, ui);
+                self.shader_options(ctx, ui_state, ui);
                 ui.separator();
                 ui.checkbox(&mut ui_state.show_fps, "fps counter");
                 if ui.checkbox(&mut ui_state.vsync, "V-Sync").clicked() {

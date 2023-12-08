@@ -10,7 +10,7 @@ pub trait Controller {
     fn mouse_input(&mut self, state: ElementState, button: MouseButton);
     fn mouse_move(&mut self, position: PhysicalPosition<f64>);
     fn mouse_scroll(&mut self, delta: MouseScrollDelta);
-    fn update(&mut self, width: u32, height: u32, options: Options);
+    fn update(&mut self, width: u32, height: u32, options: &mut Options);
     fn push_constants(&self) -> &[u8];
 }
 

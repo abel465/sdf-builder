@@ -73,11 +73,11 @@ impl State {
     }
 
     pub fn update(&mut self) {
-        let width = self.ctx.config.width;
-        let height = self.ctx.config.height;
-        let options = self.ui_state.options;
-        let controller = self.controller();
-        controller.update(width, height, options);
+        self.controllers[self.ui_state.active_shader as usize].update(
+            self.ctx.config.width,
+            self.ctx.config.height,
+            &mut self.ui_state.options,
+        );
     }
 
     pub fn render(&mut self, window: &winit::window::Window) -> Result<(), wgpu::SurfaceError> {
