@@ -95,41 +95,41 @@ impl Ui {
                 } else {
                     CursorIcon::Default
                 });
-
                 for shape in Shape::iter() {
                     ui.radio_value(&mut options.shape, shape, shape.to_string());
                 }
-                let normalised_width = (ui_state.width as f32) / (ui_state.height as f32);
-                match options.shape {
-                    Shape::Circle | Shape::EquilateralTriangle => {
+                let spec = options.shape.spec();
+                if spec.num_dims > 0 {
+                    let (dim1_max, dim2_max, dim1_label, dim2_label) = {
+                        if spec.is_radial {
+                            (0.5, options.params.dim1, "Radius", "Radius2")
+                        } else {
+                            (
+                                (ui_state.width as f32) / (ui_state.height as f32),
+                                1.0,
+                                "Width",
+                                "Height",
+                            )
+                        }
+                    };
+                    ui.horizontal(|ui| {
+                        ui.label(dim1_label);
+                        ui.add(
+                            egui::DragValue::new(&mut options.params.dim1)
+                                .clamp_range(0.0..=dim1_max)
+                                .speed(0.01),
+                        );
+                    });
+                    if spec.num_dims > 1 {
                         ui.horizontal(|ui| {
-                            ui.label("Radius:");
+                            ui.label(dim2_label);
                             ui.add(
-                                egui::DragValue::new(&mut options.params.radius)
-                                    .clamp_range(0.0..=0.5)
+                                egui::DragValue::new(&mut options.params.dim2)
+                                    .clamp_range(0.0..=dim2_max)
                                     .speed(0.01),
                             );
                         });
                     }
-                    Shape::Rectangle | Shape::IsoscelesTriangle => {
-                        ui.horizontal(|ui| {
-                            ui.label("Width:");
-                            ui.add(
-                                egui::DragValue::new(&mut options.params.width)
-                                    .clamp_range(0.0..=normalised_width)
-                                    .speed(0.01),
-                            );
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("Height:");
-                            ui.add(
-                                egui::DragValue::new(&mut options.params.height)
-                                    .clamp_range(0.0..=1.0)
-                                    .speed(0.01),
-                            );
-                        });
-                    }
-                    Shape::Triangle => {}
                 }
             }
         }
