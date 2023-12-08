@@ -5,7 +5,7 @@ pub mod ray_marching_2d;
 pub mod sierpinski_triangle;
 pub mod sdfs_2d;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Options {
     pub mandelbrot: mandelbrot::Options,
     pub koch_snowflake: koch_snowflake::Options,

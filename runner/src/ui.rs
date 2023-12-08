@@ -100,9 +100,10 @@ impl Ui {
                 }
                 let spec = options.shape.spec();
                 if spec.num_dims > 0 {
+                    let params = &mut options.params[options.shape as usize];
                     let (dim1_max, dim2_max, dim1_label, dim2_label) = {
                         if spec.is_radial {
-                            (0.5, options.params.dim1, "Radius", "Radius2")
+                            (0.5, params.dim1, "Radius", "Radius2")
                         } else {
                             (
                                 (ui_state.width as f32) / (ui_state.height as f32),
@@ -115,7 +116,7 @@ impl Ui {
                     ui.horizontal(|ui| {
                         ui.label(dim1_label);
                         ui.add(
-                            egui::DragValue::new(&mut options.params.dim1)
+                            egui::DragValue::new(&mut params.dim1)
                                 .clamp_range(0.0..=dim1_max)
                                 .speed(0.01),
                         );
@@ -124,7 +125,7 @@ impl Ui {
                         ui.horizontal(|ui| {
                             ui.label(dim2_label);
                             ui.add(
-                                egui::DragValue::new(&mut options.params.dim2)
+                                egui::DragValue::new(&mut params.dim2)
                                     .clamp_range(0.0..=dim2_max)
                                     .speed(0.01),
                             );

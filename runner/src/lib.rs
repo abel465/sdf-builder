@@ -1,4 +1,3 @@
-#![feature(variant_count)]
 use structopt::StructOpt;
 use strum::{Display, EnumIter, EnumString};
 
