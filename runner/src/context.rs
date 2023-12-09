@@ -78,4 +78,13 @@ impl GraphicsContext {
             config,
         }
     }
+
+    pub fn set_vsync(&mut self, enable: bool) {
+        self.config.present_mode = if enable {
+            wgpu::PresentMode::AutoVsync
+        } else {
+            wgpu::PresentMode::AutoNoVsync
+        };
+        self.surface.configure(&self.device, &self.config);
+    }
 }

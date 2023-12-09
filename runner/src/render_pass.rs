@@ -2,6 +2,7 @@ use wgpu::TextureView;
 
 use crate::{
     context::GraphicsContext,
+    controller::Controller,
     shader::CompiledShaderModules,
     ui::{Ui, UiState},
     Options,
@@ -64,10 +65,10 @@ impl RenderPass {
     pub fn render(
         &mut self,
         ctx: &GraphicsContext,
-        push_constants: &[u8],
         window: &winit::window::Window,
         ui: &mut Ui,
         ui_state: &mut UiState,
+        controller: &mut dyn Controller,
     ) -> Result<(), wgpu::SurfaceError> {
         let output = match ctx.surface.get_current_texture() {
             Ok(surface_texture) => surface_texture,
@@ -86,8 +87,8 @@ impl RenderPass {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
-        self.render_shader(ctx, &output_view, push_constants);
-        self.render_ui(ctx, &output_view, window, ui, ui_state);
+        self.render_shader(ctx, &output_view, controller.push_constants());
+        self.render_ui(ctx, &output_view, window, ui, ui_state, controller);
 
         output.present();
 
@@ -138,8 +139,9 @@ impl RenderPass {
         window: &winit::window::Window,
         ui: &mut Ui,
         ui_state: &mut UiState,
+        controller: &mut dyn Controller,
     ) {
-        let (clipped_primitives, textures_delta) = ui.prepare(window, ui_state);
+        let (clipped_primitives, textures_delta) = ui.prepare(window, ui_state, controller);
 
         let screen_descriptor = egui_wgpu::renderer::ScreenDescriptor {
             size_in_pixels: [ctx.config.width, ctx.config.height],

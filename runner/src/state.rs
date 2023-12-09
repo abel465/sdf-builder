@@ -1,15 +1,14 @@
 use crate::{
     context::GraphicsContext,
     controller::{new_controller, Controller},
-    fps_counter::FpsCounter,
     render_pass::RenderPass,
     shader::{self, CompiledShaderModules},
     ui::{Ui, UiState},
     window::Window,
     Options, RustGPUShader,
 };
-use strum::IntoEnumIterator;
 
+use strum::IntoEnumIterator;
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
     event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent},
@@ -21,7 +20,6 @@ pub struct State {
     controllers: Vec<Box<dyn Controller>>,
     ui: Ui,
     ui_state: UiState,
-    fps_counter: FpsCounter,
 }
 
 impl State {
@@ -38,16 +36,17 @@ impl State {
 
         Self {
             rpass: RenderPass::new(&ctx, compiled_shader_modules, options),
+            controllers: RustGPUShader::iter()
+                .map(|s| new_controller(s, window.window.inner_size()))
+                .collect(),
             ctx,
-            controllers: RustGPUShader::iter().map(|s| new_controller(s)).collect(),
             ui,
             ui_state,
-            fps_counter: FpsCounter::new(),
         }
     }
 
-    fn controller(&mut self) -> &mut Box<dyn Controller> {
-        &mut self.controllers[self.ui_state.active_shader as usize]
+    fn controller(&mut self) -> &mut dyn Controller {
+        &mut *self.controllers[self.ui_state.active_shader as usize]
     }
 
     pub fn resize(&mut self, size: PhysicalSize<u32>) {
@@ -57,6 +56,7 @@ impl State {
             self.ctx
                 .surface
                 .configure(&self.ctx.device, &self.ctx.config);
+            self.controller().resize(size);
         }
     }
 
@@ -73,26 +73,17 @@ impl State {
     }
 
     pub fn update(&mut self) {
-        self.controllers[self.ui_state.active_shader as usize].update(
-            self.ctx.config.width,
-            self.ctx.config.height,
-            &mut self.ui_state.options,
-        );
+        self.controller().update();
     }
 
     pub fn render(&mut self, window: &winit::window::Window) -> Result<(), wgpu::SurfaceError> {
-        self.ui_state.width = self.ctx.config.width;
-        self.ui_state.height = self.ctx.config.height;
-        self.ui_state.fps = self.fps_counter.tick();
-        let push_constants =
-            self.controllers[self.ui_state.active_shader as usize].push_constants();
-
+        let controller = &mut *self.controllers[self.ui_state.active_shader as usize];
         self.rpass.render(
             &self.ctx,
-            push_constants,
             window,
             &mut self.ui,
             &mut self.ui_state,
+            controller,
         )
     }
 
@@ -126,14 +117,7 @@ impl State {
         )
     }
 
-    pub fn toggle_vsync(&mut self, enabled: bool) {
-        self.ctx.config.present_mode = if enabled {
-            wgpu::PresentMode::AutoVsync
-        } else {
-            wgpu::PresentMode::AutoNoVsync
-        };
-        self.ctx
-            .surface
-            .configure(&self.ctx.device, &self.ctx.config);
+    pub fn set_vsync(&mut self, enable: bool) {
+        self.ctx.set_vsync(enable);
     }
 }

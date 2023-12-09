@@ -9,7 +9,7 @@ use winit::{
 pub enum UserEvent {
     NewModule(RustGPUShader, CompiledShaderModules),
     SwitchShader(RustGPUShader),
-    ToggleVSync(bool),
+    SetVSync(bool),
 }
 
 pub struct Window {

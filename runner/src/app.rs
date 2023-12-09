@@ -58,8 +58,8 @@ async fn run(options: Options, window: Window, compiled_shader_modules: Compiled
                 UserEvent::SwitchShader(shader) => {
                     app.switch_shader(shader);
                 }
-                UserEvent::ToggleVSync(enabled) => {
-                    app.toggle_vsync(enabled);
+                UserEvent::SetVSync(enable) => {
+                    app.set_vsync(enable);
                 }
             },
             _ => {}
