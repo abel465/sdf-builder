@@ -9,6 +9,7 @@ members = [
   "shaders/koch-snowflake",
   "shaders/sierpinski-triangle",
   "shaders/sdfs-2d",
+  "shaders/sdfs-3d",
 ]
 default-members = ["runner"]
 

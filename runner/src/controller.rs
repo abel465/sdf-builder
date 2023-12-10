@@ -26,5 +26,6 @@ pub fn new_controller(shader: RustGPUShader, size: PhysicalSize<u32>) -> Box<dyn
         RustGPUShader::SierpinskiTriangle => Box::new(sierpinski_triangle::Controller::new(size)),
         RustGPUShader::KochSnowflake => Box::new(koch_snowflake::Controller::new(size)),
         RustGPUShader::SDFs2D => Box::new(sdfs_2d::Controller::new(size)),
+        RustGPUShader::SDFs3D => Box::new(sdfs_3d::Controller::new(size)),
     }
 }
