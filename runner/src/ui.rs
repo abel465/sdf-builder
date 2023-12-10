@@ -24,7 +24,7 @@ impl UiState {
     pub fn new(active_shader: RustGPUShader) -> Self {
         Self {
             fps: 0,
-            show_fps: false,
+            show_fps: true,
             vsync: true,
             active_shader,
             cursor_icon: CursorIcon::default(),
