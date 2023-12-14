@@ -9,9 +9,9 @@ pub trait Controller {
     fn new(size: PhysicalSize<u32>) -> Self
     where
         Self: Sized;
-    fn mouse_input(&mut self, state: ElementState, button: MouseButton) {}
-    fn mouse_move(&mut self, position: PhysicalPosition<f64>) {}
-    fn mouse_scroll(&mut self, delta: MouseScrollDelta) {}
+    fn mouse_input(&mut self, _state: ElementState, _button: MouseButton) {}
+    fn mouse_move(&mut self, _position: PhysicalPosition<f64>) {}
+    fn mouse_scroll(&mut self, _delta: MouseScrollDelta) {}
     fn resize(&mut self, size: PhysicalSize<u32>);
     fn update(&mut self);
     fn push_constants(&self) -> &[u8];
