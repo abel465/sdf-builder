@@ -19,8 +19,6 @@ authors = ["Abel <abel465@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
-[workspace.dependencies]
-
 [workspace.dependencies.spirv-std]
 git = "https://github.com/EmbarkStudios/rust-gpu"
 rev = "d0e374968a37d8a37c4f3509cd10719d384470f6"
