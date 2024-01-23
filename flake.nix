@@ -30,10 +30,6 @@
           
           LD_LIBRARY_PATH = "${lib.makeLibraryPath buildInputs}";
 
-          # Spirv-tools crate fails to compile because the fortify
-          # feature requires the optimisation -O flag (which it does not have)
-          hardeningDisable = [ "fortify" ];
-
           buildInputs = [
             rustPkg
             xorg.libX11
