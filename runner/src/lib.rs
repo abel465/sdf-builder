@@ -21,6 +21,7 @@ pub enum RustGPUShader {
     KochSnowflake,
     SDFs2D,
     SDFs3D,
+    HydrogenWavefunction,
 }
 
 #[derive(StructOpt, Clone)]

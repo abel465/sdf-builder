@@ -27,5 +27,8 @@ pub fn new_controller(shader: RustGPUShader, size: PhysicalSize<u32>) -> Box<dyn
         RustGPUShader::KochSnowflake => Box::new(koch_snowflake::Controller::new(size)),
         RustGPUShader::SDFs2D => Box::new(sdfs_2d::Controller::new(size)),
         RustGPUShader::SDFs3D => Box::new(sdfs_3d::Controller::new(size)),
+        RustGPUShader::HydrogenWavefunction => {
+            Box::new(hydrogen_wavefunction::Controller::new(size))
+        }
     }
 }

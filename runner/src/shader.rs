@@ -57,6 +57,7 @@ pub fn maybe_watch(
             RustGPUShader::KochSnowflake => "koch-snowflake",
             RustGPUShader::SDFs2D => "sdfs-2d",
             RustGPUShader::SDFs3D => "sdfs-3d",
+            RustGPUShader::HydrogenWavefunction => "hydrogen-wavefunction",
         };
         let manifest_dir = env!("CARGO_MANIFEST_DIR");
         let crate_path = [manifest_dir, "..", "shaders", crate_name]

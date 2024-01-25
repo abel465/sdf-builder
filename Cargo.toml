@@ -10,6 +10,7 @@ members = [
   "shaders/sierpinski-triangle",
   "shaders/sdfs-2d",
   "shaders/sdfs-3d",
+  "shaders/hydrogen-wavefunction",
 ]
 default-members = ["runner"]
 
