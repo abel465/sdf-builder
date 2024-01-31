@@ -22,6 +22,7 @@ pub enum RustGPUShader {
     SDFs2D,
     SDFs3D,
     HydrogenWavefunction,
+    SphericalHarmonics,
 }
 
 #[derive(StructOpt, Clone)]
