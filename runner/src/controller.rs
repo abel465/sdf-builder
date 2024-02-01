@@ -1,5 +1,5 @@
 use crate::{shaders, RustGPUShader};
-use egui::Context;
+use egui::{Context, Ui};
 use shaders::*;
 use winit::dpi::PhysicalSize;
 use winit::event::{ElementState, MouseScrollDelta};
@@ -15,7 +15,10 @@ pub trait Controller {
     fn resize(&mut self, size: PhysicalSize<u32>);
     fn update(&mut self);
     fn push_constants(&self) -> &[u8];
-    fn ui(&mut self, _ctx: &Context, _ui: &mut egui::Ui) {}
+    fn ui(&mut self, _ctx: &Context, _ui: &mut Ui) {}
+    fn has_ui(&self) -> bool {
+        false
+    }
 }
 
 pub fn new_controller(shader: RustGPUShader, size: PhysicalSize<u32>) -> Box<dyn Controller> {

@@ -1,9 +1,9 @@
 use egui::{
     epaint::{textures::TexturesDelta, ClippedPrimitive},
-    pos2, Context, CursorIcon, Layout,
+    vec2, Align2, Context, CursorIcon, Layout, Vec2,
 };
 use strum::IntoEnumIterator;
-use winit::{dpi::PhysicalSize, event::WindowEvent, event_loop::EventLoopProxy};
+use winit::{event::WindowEvent, event_loop::EventLoopProxy};
 
 use crate::{
     controller::Controller,
@@ -68,7 +68,7 @@ impl Ui {
         ui_state.fps = self.fps_counter.tick();
         let raw_input = self.egui_winit_state.take_egui_input(&window);
         let full_output = self.context.run(raw_input, |ctx| {
-            self.ui(ctx, ui_state, controller, window.inner_size());
+            self.ui(ctx, ui_state, controller);
         });
         self.egui_winit_state.handle_platform_output(
             &window,
@@ -83,20 +83,14 @@ impl Ui {
         let _ = self.event_proxy.send_event(event);
     }
 
-    fn ui(
-        &self,
-        ctx: &Context,
-        ui_state: &mut UiState,
-        controller: &mut dyn Controller,
-        size: PhysicalSize<u32>,
-    ) {
-        egui::Window::new("main")
-            .title_bar(false)
+    fn ui(&self, ctx: &Context, ui_state: &mut UiState, controller: &mut dyn Controller) {
+        let window_margin = 10.0;
+        egui::Window::new("Shaders")
             .resizable(false)
-            .default_width(128.0)
+            .anchor(Align2::LEFT_TOP, Vec2::splat(window_margin))
+            .default_width(140.0)
             .show(ctx, |ui| {
-                ui.heading("Shaders");
-                ui.with_layout(Layout::default().with_cross_justify(true), |ui| {
+                ui.with_layout(Layout::default(), |ui| {
                     for shader in RustGPUShader::iter() {
                         if ui
                             .selectable_label(ui_state.active_shader == shader, shader.to_string())
@@ -108,20 +102,25 @@ impl Ui {
                         }
                     }
                 });
-                ui.separator();
-                controller.ui(ctx, ui);
-                ui.separator();
                 ui.checkbox(&mut ui_state.show_fps, "fps counter");
                 if ui.checkbox(&mut ui_state.vsync, "V-Sync").clicked() {
                     self.send_event(UserEvent::SetVSync(ui_state.vsync));
                 }
             });
+        if controller.has_ui() {
+            egui::Window::new(ui_state.active_shader.to_string())
+                .resizable(false)
+                .anchor(Align2::RIGHT_TOP, window_margin * vec2(-1.0, 1.0))
+                .show(ctx, |ui| {
+                    controller.ui(ctx, ui);
+                });
+        }
         if ui_state.show_fps {
             egui::Window::new("fps")
                 .title_bar(false)
                 .resizable(false)
                 .interactable(false)
-                .fixed_pos(pos2(size.width as f32 - 70.0, 10.0))
+                .anchor(Align2::RIGHT_BOTTOM, Vec2::splat(-window_margin))
                 .show(ctx, |ui| {
                     ui.label(format!("FPS: {}", ui_state.fps));
                 });
