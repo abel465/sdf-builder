@@ -3,10 +3,12 @@ use wgpu::TextureView;
 use crate::{
     context::GraphicsContext,
     controller::Controller,
+    model::Vertex,
     shader::CompiledShaderModules,
     ui::{Ui, UiState},
     Options,
 };
+use wgpu::util::DeviceExt;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod shaders {
@@ -25,6 +27,7 @@ pub struct RenderPass {
     render_pipeline: wgpu::RenderPipeline,
     ui_renderer: egui_wgpu::Renderer,
     options: Options,
+    vertex_buffer: Option<wgpu::Buffer>,
 }
 
 impl RenderPass {
@@ -32,6 +35,7 @@ impl RenderPass {
         ctx: &GraphicsContext,
         compiled_shader_modules: CompiledShaderModules,
         options: Options,
+        maybe_vertices: Option<&[Vertex]>,
     ) -> Self {
         let pipeline_layout = ctx
             .device
@@ -50,7 +54,9 @@ impl RenderPass {
             &pipeline_layout,
             ctx.config.format,
             compiled_shader_modules,
+            maybe_vertices.is_some(),
         );
+        let vertex_buffer = create_vertex_buffer(ctx, maybe_vertices);
 
         let ui_renderer = egui_wgpu::Renderer::new(&ctx.device, ctx.config.format, None, 1);
 
@@ -59,6 +65,7 @@ impl RenderPass {
             render_pipeline,
             ui_renderer,
             options,
+            vertex_buffer,
         }
     }
 
@@ -87,7 +94,7 @@ impl RenderPass {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
-        self.render_shader(ctx, &output_view, controller.push_constants());
+        self.render_shader(ctx, &output_view, controller);
         self.render_ui(ctx, &output_view, window, ui, ui_state, controller);
 
         output.present();
@@ -99,7 +106,7 @@ impl RenderPass {
         &mut self,
         ctx: &GraphicsContext,
         output_view: &TextureView,
-        push_constants: &[u8],
+        controller: &mut dyn Controller,
     ) {
         let mut encoder = ctx
             .device
@@ -124,9 +131,15 @@ impl RenderPass {
             rpass.set_push_constants(
                 wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                 0,
-                push_constants,
+                controller.push_constants(),
             );
-            rpass.draw(0..3, 0..1);
+            let num_vertices = if let Some(vertex_buffer) = &self.vertex_buffer {
+                rpass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                vertex_buffer.size() as u32 / std::mem::size_of::<Vertex>() as u32
+            } else {
+                3
+            };
+            rpass.draw(0..num_vertices, 0..1);
         }
 
         ctx.queue.submit(Some(encoder.finish()));
@@ -192,15 +205,36 @@ impl RenderPass {
         ctx.queue.submit(Some(encoder.finish()));
     }
 
-    pub fn new_module(&mut self, ctx: &GraphicsContext, new_module: CompiledShaderModules) {
+    pub fn new_module(
+        &mut self,
+        ctx: &GraphicsContext,
+        new_module: CompiledShaderModules,
+        maybe_vertices: Option<&[Vertex]>,
+    ) {
+        self.vertex_buffer = create_vertex_buffer(ctx, maybe_vertices);
         self.render_pipeline = create_pipeline(
             &self.options,
             &ctx.device,
             &self.pipeline_layout,
             ctx.config.format,
             new_module,
+            maybe_vertices.is_some(),
         );
     }
+}
+
+fn create_vertex_buffer(
+    ctx: &GraphicsContext,
+    maybe_vertices: Option<&[Vertex]>,
+) -> Option<wgpu::Buffer> {
+    maybe_vertices.map(|vertices| {
+        ctx.device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Vertex Buffer"),
+                contents: bytemuck::cast_slice(vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            })
+    })
 }
 
 fn create_pipeline(
@@ -209,6 +243,7 @@ fn create_pipeline(
     pipeline_layout: &wgpu::PipelineLayout,
     surface_format: wgpu::TextureFormat,
     compiled_shader_modules: CompiledShaderModules,
+    has_vertex_buffer: bool,
 ) -> wgpu::RenderPipeline {
     // FIXME(eddyb) automate this decision by default.
     let create_module = |module| {
@@ -241,13 +276,20 @@ fn create_pipeline(
         &fs_module
     };
 
+    let buffers_empty = &[];
+    let buffers = &[crate::model::Vertex::desc()];
+
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: None,
         layout: Some(pipeline_layout),
         vertex: wgpu::VertexState {
             module: vs_module,
             entry_point: vs_entry_point,
-            buffers: &[],
+            buffers: if has_vertex_buffer {
+                buffers
+            } else {
+                buffers_empty
+            },
         },
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,

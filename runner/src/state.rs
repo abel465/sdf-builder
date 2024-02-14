@@ -34,11 +34,22 @@ impl State {
 
         let ui_state = UiState::new(options.shader);
 
+        let controllers = RustGPUShader::iter()
+            .map(|s| new_controller(s, window.window.inner_size()))
+            .collect::<Vec<Box<dyn Controller>>>();
+
+        let controller = &controllers[ui_state.active_shader as usize];
+
+        let rpass = RenderPass::new(
+            &ctx,
+            compiled_shader_modules,
+            options,
+            controller.vertices(),
+        );
+
         Self {
-            rpass: RenderPass::new(&ctx, compiled_shader_modules, options),
-            controllers: RustGPUShader::iter()
-                .map(|s| new_controller(s, window.window.inner_size()))
-                .collect(),
+            rpass,
+            controllers,
             ctx,
             ui,
             ui_state,
@@ -100,8 +111,10 @@ impl State {
     }
 
     pub fn new_module(&mut self, shader: RustGPUShader, new_module: CompiledShaderModules) {
+        let controller = &self.controllers[shader as usize];
+        let vertices = controller.vertices();
         self.ui_state.active_shader = shader;
-        self.rpass.new_module(&self.ctx, new_module);
+        self.rpass.new_module(&self.ctx, new_module, vertices);
     }
 
     pub fn switch_shader(&mut self, shader: RustGPUShader) {

@@ -1,3 +1,4 @@
+use crate::model::Vertex;
 use crate::{shaders, RustGPUShader};
 use egui::{Context, Ui};
 use shaders::*;
@@ -18,6 +19,9 @@ pub trait Controller {
     fn ui(&mut self, _ctx: &Context, _ui: &mut Ui) {}
     fn has_ui(&self) -> bool {
         false
+    }
+    fn vertices(&self) -> Option<&[Vertex]> {
+        None
     }
 }
 

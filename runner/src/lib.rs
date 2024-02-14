@@ -11,6 +11,7 @@ mod shaders;
 mod state;
 mod ui;
 mod window;
+mod model;
 
 #[derive(EnumString, EnumIter, Display, PartialEq, Eq, Copy, Clone)]
 pub enum RustGPUShader {
