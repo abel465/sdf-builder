@@ -59,6 +59,7 @@ pub fn maybe_watch(
             RustGPUShader::SDFs3D => "sdfs-3d",
             RustGPUShader::HydrogenWavefunction => "hydrogen-wavefunction",
             RustGPUShader::SphericalHarmonics => "spherical-harmonics",
+            RustGPUShader::SphericalHarmonicsShape => "spherical-harmonics-shape",
         };
         let manifest_dir = env!("CARGO_MANIFEST_DIR");
         let crate_path = [manifest_dir, "..", "shaders", crate_name]

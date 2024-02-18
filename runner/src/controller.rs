@@ -40,5 +40,8 @@ pub fn new_controller(shader: RustGPUShader, size: PhysicalSize<u32>) -> Box<dyn
             Box::new(hydrogen_wavefunction::Controller::new(size))
         }
         RustGPUShader::SphericalHarmonics => Box::new(spherical_harmonics::Controller::new(size)),
+        RustGPUShader::SphericalHarmonicsShape => {
+            Box::new(spherical_harmonics_shape::Controller::new(size))
+        }
     }
 }
