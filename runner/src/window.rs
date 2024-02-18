@@ -1,5 +1,4 @@
 use crate::{shader::CompiledShaderModules, RustGPUShader};
-
 use winit::{
     dpi::PhysicalSize,
     event_loop::{EventLoop, EventLoopBuilder},
@@ -9,6 +8,7 @@ use winit::{
 pub enum UserEvent {
     NewModule(RustGPUShader, CompiledShaderModules),
     SwitchShader(RustGPUShader),
+    NewVerticesReady,
     SetVSync(bool),
 }
 

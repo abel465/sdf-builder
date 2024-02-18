@@ -102,6 +102,7 @@ impl Ui {
                         }
                     }
                 });
+                ui.separator();
                 ui.checkbox(&mut ui_state.show_fps, "fps counter");
                 if ui.checkbox(&mut ui_state.vsync, "V-Sync").clicked() {
                     self.send_event(UserEvent::SetVSync(ui_state.vsync));
@@ -112,7 +113,7 @@ impl Ui {
                 .resizable(false)
                 .anchor(Align2::RIGHT_TOP, window_margin * vec2(-1.0, 1.0))
                 .show(ctx, |ui| {
-                    controller.ui(ctx, ui);
+                    controller.ui(ctx, ui, &self.event_proxy);
                 });
         }
         if ui_state.show_fps {

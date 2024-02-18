@@ -57,7 +57,7 @@ impl RenderPass {
             compiled_shader_modules,
             maybe_vertices.is_some(),
         );
-        let vertex_buffer = create_vertex_buffer(ctx, maybe_vertices);
+        let vertex_buffer = maybe_create_vertex_buffer(ctx, maybe_vertices);
 
         let ui_renderer = egui_wgpu::Renderer::new(&ctx.device, ctx.config.format, None, 1);
 
@@ -108,7 +108,7 @@ impl RenderPass {
         &mut self,
         ctx: &GraphicsContext,
         output_view: &TextureView,
-        controller: &mut dyn Controller,
+        controller: &dyn Controller,
         depth_texture: Option<&Texture>,
     ) {
         let mut encoder = ctx
@@ -123,7 +123,11 @@ impl RenderPass {
                     view: &output_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::GREEN),
+                        load: wgpu::LoadOp::Clear(if self.vertex_buffer.is_some() {
+                            wgpu::Color::BLACK
+                        } else {
+                            wgpu::Color::GREEN
+                        }),
                         store: true,
                     },
                 })],
@@ -223,7 +227,7 @@ impl RenderPass {
         new_module: CompiledShaderModules,
         maybe_vertices: Option<&[Vertex]>,
     ) {
-        self.vertex_buffer = create_vertex_buffer(ctx, maybe_vertices);
+        self.vertex_buffer = maybe_create_vertex_buffer(ctx, maybe_vertices);
         self.render_pipeline = create_pipeline(
             &self.options,
             &ctx.device,
@@ -233,9 +237,13 @@ impl RenderPass {
             maybe_vertices.is_some(),
         );
     }
+
+    pub fn new_vertices(&mut self, ctx: &GraphicsContext, maybe_vertices: Option<&[Vertex]>) {
+        self.vertex_buffer = maybe_create_vertex_buffer(ctx, maybe_vertices);
+    }
 }
 
-fn create_vertex_buffer(
+fn maybe_create_vertex_buffer(
     ctx: &GraphicsContext,
     maybe_vertices: Option<&[Vertex]>,
 ) -> Option<wgpu::Buffer> {

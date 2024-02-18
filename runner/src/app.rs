@@ -61,6 +61,9 @@ async fn run(options: Options, window: Window, compiled_shader_modules: Compiled
                 UserEvent::SetVSync(enable) => {
                     app.set_vsync(enable);
                 }
+                UserEvent::NewVerticesReady => {
+                    app.new_vertices();
+                }
             },
             _ => {}
         }

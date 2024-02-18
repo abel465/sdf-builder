@@ -128,6 +128,11 @@ impl State {
         self.rpass.new_module(&self.ctx, new_module, vertices);
     }
 
+    pub fn new_vertices(&mut self) {
+        let controller = &self.controllers[self.ui_state.active_shader as usize];
+        self.rpass.new_vertices(&self.ctx, controller.vertices());
+    }
+
     pub fn switch_shader(&mut self, shader: RustGPUShader) {
         self.new_module(
             shader,

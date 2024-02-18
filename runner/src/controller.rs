@@ -1,9 +1,11 @@
 use crate::model::Vertex;
+use crate::window::UserEvent;
 use crate::{shaders, RustGPUShader};
 use egui::{Context, Ui};
 use shaders::*;
 use winit::dpi::PhysicalSize;
 use winit::event::{ElementState, MouseScrollDelta};
+use winit::event_loop::EventLoopProxy;
 use winit::{dpi::PhysicalPosition, event::MouseButton};
 
 pub trait Controller {
@@ -16,7 +18,7 @@ pub trait Controller {
     fn resize(&mut self, size: PhysicalSize<u32>);
     fn update(&mut self);
     fn push_constants(&self) -> &[u8];
-    fn ui(&mut self, _ctx: &Context, _ui: &mut Ui) {}
+    fn ui(&mut self, _ctx: &Context, _ui: &mut Ui, _event_proxy: &EventLoopProxy<UserEvent>) {}
     fn has_ui(&self) -> bool {
         false
     }
