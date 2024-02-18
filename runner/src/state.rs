@@ -3,6 +3,7 @@ use crate::{
     controller::{new_controller, Controller},
     render_pass::RenderPass,
     shader::{self, CompiledShaderModules},
+    texture::Texture,
     ui::{Ui, UiState},
     window::Window,
     Options, RustGPUShader,
@@ -20,6 +21,7 @@ pub struct State {
     controllers: Vec<Box<dyn Controller>>,
     ui: Ui,
     ui_state: UiState,
+    depth_texture: Texture,
 }
 
 impl State {
@@ -47,12 +49,16 @@ impl State {
             controller.vertices(),
         );
 
+        let depth_texture =
+            Texture::create_depth_texture(&ctx.device, &ctx.config, "depth_texture");
+
         Self {
             rpass,
             controllers,
             ctx,
             ui,
             ui_state,
+            depth_texture,
         }
     }
 
@@ -68,6 +74,8 @@ impl State {
                 .surface
                 .configure(&self.ctx.device, &self.ctx.config);
             self.controller().resize(size);
+            self.depth_texture =
+                Texture::create_depth_texture(&self.ctx.device, &self.ctx.config, "depth_texture");
         }
     }
 
@@ -89,12 +97,15 @@ impl State {
 
     pub fn render(&mut self, window: &winit::window::Window) -> Result<(), wgpu::SurfaceError> {
         let controller = &mut *self.controllers[self.ui_state.active_shader as usize];
+        let depth_texture = controller.vertices().map(|_| &self.depth_texture);
+
         self.rpass.render(
             &self.ctx,
             window,
             &mut self.ui,
             &mut self.ui_state,
             controller,
+            depth_texture,
         )
     }
 

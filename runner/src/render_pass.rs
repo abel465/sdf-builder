@@ -5,6 +5,7 @@ use crate::{
     controller::Controller,
     model::Vertex,
     shader::CompiledShaderModules,
+    texture::Texture,
     ui::{Ui, UiState},
     Options,
 };
@@ -76,6 +77,7 @@ impl RenderPass {
         ui: &mut Ui,
         ui_state: &mut UiState,
         controller: &mut dyn Controller,
+        depth_texture: Option<&Texture>,
     ) -> Result<(), wgpu::SurfaceError> {
         let output = match ctx.surface.get_current_texture() {
             Ok(surface_texture) => surface_texture,
@@ -94,7 +96,7 @@ impl RenderPass {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
-        self.render_shader(ctx, &output_view, controller);
+        self.render_shader(ctx, &output_view, controller, depth_texture);
         self.render_ui(ctx, &output_view, window, ui, ui_state, controller);
 
         output.present();
@@ -107,6 +109,7 @@ impl RenderPass {
         ctx: &GraphicsContext,
         output_view: &TextureView,
         controller: &mut dyn Controller,
+        depth_texture: Option<&Texture>,
     ) {
         let mut encoder = ctx
             .device
@@ -124,7 +127,16 @@ impl RenderPass {
                         store: true,
                     },
                 })],
-                depth_stencil_attachment: None,
+                depth_stencil_attachment: depth_texture.map(|depth_texture| {
+                    wgpu::RenderPassDepthStencilAttachment {
+                        view: &depth_texture.view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(1.0),
+                            store: true,
+                        }),
+                        stencil_ops: None,
+                    }
+                }),
             });
 
             rpass.set_pipeline(&self.render_pipeline);
@@ -300,7 +312,17 @@ fn create_pipeline(
             polygon_mode: wgpu::PolygonMode::Fill,
             conservative: false,
         },
-        depth_stencil: None,
+        depth_stencil: if has_vertex_buffer {
+            Some(wgpu::DepthStencilState {
+                format: crate::texture::Texture::DEPTH_FORMAT,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less,
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            })
+        } else {
+            None
+        },
         multisample: wgpu::MultisampleState {
             count: 1,
             mask: !0,
