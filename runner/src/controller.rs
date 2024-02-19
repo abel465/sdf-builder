@@ -22,7 +22,7 @@ pub trait Controller {
     fn has_ui(&self) -> bool {
         false
     }
-    fn vertices(&self) -> Option<&[Vertex]> {
+    fn buffers(&self) -> Option<(&[Vertex],&[u32])> {
         None
     }
 }

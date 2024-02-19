@@ -46,7 +46,7 @@ impl State {
             &ctx,
             compiled_shader_modules,
             options,
-            controller.vertices(),
+            controller.buffers(),
         );
 
         let depth_texture =
@@ -97,7 +97,7 @@ impl State {
 
     pub fn render(&mut self, window: &winit::window::Window) -> Result<(), wgpu::SurfaceError> {
         let controller = &mut *self.controllers[self.ui_state.active_shader as usize];
-        let depth_texture = controller.vertices().map(|_| &self.depth_texture);
+        let depth_texture = controller.buffers().map(|_| &self.depth_texture);
 
         self.rpass.render(
             &self.ctx,
@@ -123,14 +123,14 @@ impl State {
 
     pub fn new_module(&mut self, shader: RustGPUShader, new_module: CompiledShaderModules) {
         let controller = &self.controllers[shader as usize];
-        let vertices = controller.vertices();
+        let buffers = controller.buffers();
         self.ui_state.active_shader = shader;
-        self.rpass.new_module(&self.ctx, new_module, vertices);
+        self.rpass.new_module(&self.ctx, new_module, buffers);
     }
 
     pub fn new_vertices(&mut self) {
         let controller = &self.controllers[self.ui_state.active_shader as usize];
-        self.rpass.new_vertices(&self.ctx, controller.vertices());
+        self.rpass.new_vertices(&self.ctx, controller.buffers());
     }
 
     pub fn switch_shader(&mut self, shader: RustGPUShader) {

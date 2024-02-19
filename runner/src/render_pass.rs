@@ -1,5 +1,3 @@
-use wgpu::TextureView;
-
 use crate::{
     context::GraphicsContext,
     controller::Controller,
@@ -9,7 +7,7 @@ use crate::{
     ui::{Ui, UiState},
     Options,
 };
-use wgpu::util::DeviceExt;
+use wgpu::{util::DeviceExt, TextureView};
 
 #[cfg(not(target_arch = "wasm32"))]
 mod shaders {
@@ -28,7 +26,7 @@ pub struct RenderPass {
     render_pipeline: wgpu::RenderPipeline,
     ui_renderer: egui_wgpu::Renderer,
     options: Options,
-    vertex_buffer: Option<wgpu::Buffer>,
+    buffers: Option<[wgpu::Buffer; 2]>,
 }
 
 impl RenderPass {
@@ -36,7 +34,7 @@ impl RenderPass {
         ctx: &GraphicsContext,
         compiled_shader_modules: CompiledShaderModules,
         options: Options,
-        maybe_vertices: Option<&[Vertex]>,
+        maybe_buffers: Option<(&[Vertex], &[u32])>,
     ) -> Self {
         let pipeline_layout = ctx
             .device
@@ -55,9 +53,9 @@ impl RenderPass {
             &pipeline_layout,
             ctx.config.format,
             compiled_shader_modules,
-            maybe_vertices.is_some(),
+            maybe_buffers.is_some(),
         );
-        let vertex_buffer = maybe_create_vertex_buffer(ctx, maybe_vertices);
+        let buffers = maybe_create_buffers(ctx, maybe_buffers);
 
         let ui_renderer = egui_wgpu::Renderer::new(&ctx.device, ctx.config.format, None, 1);
 
@@ -66,7 +64,7 @@ impl RenderPass {
             render_pipeline,
             ui_renderer,
             options,
-            vertex_buffer,
+            buffers,
         }
     }
 
@@ -123,7 +121,7 @@ impl RenderPass {
                     view: &output_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(if self.vertex_buffer.is_some() {
+                        load: wgpu::LoadOp::Clear(if self.buffers.is_some() {
                             wgpu::Color::BLACK
                         } else {
                             wgpu::Color::GREEN
@@ -149,13 +147,14 @@ impl RenderPass {
                 0,
                 controller.push_constants(),
             );
-            let num_vertices = if let Some(vertex_buffer) = &self.vertex_buffer {
+            if let Some([vertex_buffer, index_buffer]) = &self.buffers {
                 rpass.set_vertex_buffer(0, vertex_buffer.slice(..));
-                vertex_buffer.size() as u32 / std::mem::size_of::<Vertex>() as u32
+                rpass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                let num_indices = index_buffer.size() as u32 / std::mem::size_of::<u32>() as u32;
+                rpass.draw_indexed(0..num_indices, 0, 0..1);
             } else {
-                3
+                rpass.draw(0..3, 0..1);
             };
-            rpass.draw(0..num_vertices, 0..1);
         }
 
         ctx.queue.submit(Some(encoder.finish()));
@@ -225,35 +224,47 @@ impl RenderPass {
         &mut self,
         ctx: &GraphicsContext,
         new_module: CompiledShaderModules,
-        maybe_vertices: Option<&[Vertex]>,
+        maybe_buffers: Option<(&[Vertex], &[u32])>,
     ) {
-        self.vertex_buffer = maybe_create_vertex_buffer(ctx, maybe_vertices);
+        self.buffers = maybe_create_buffers(ctx, maybe_buffers);
         self.render_pipeline = create_pipeline(
             &self.options,
             &ctx.device,
             &self.pipeline_layout,
             ctx.config.format,
             new_module,
-            maybe_vertices.is_some(),
+            maybe_buffers.is_some(),
         );
     }
 
-    pub fn new_vertices(&mut self, ctx: &GraphicsContext, maybe_vertices: Option<&[Vertex]>) {
-        self.vertex_buffer = maybe_create_vertex_buffer(ctx, maybe_vertices);
+    pub fn new_vertices(
+        &mut self,
+        ctx: &GraphicsContext,
+        maybe_buffers: Option<(&[Vertex], &[u32])>,
+    ) {
+        self.buffers = maybe_create_buffers(ctx, maybe_buffers);
     }
 }
 
-fn maybe_create_vertex_buffer(
+fn maybe_create_buffers(
     ctx: &GraphicsContext,
-    maybe_vertices: Option<&[Vertex]>,
-) -> Option<wgpu::Buffer> {
-    maybe_vertices.map(|vertices| {
-        ctx.device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(vertices),
-                usage: wgpu::BufferUsages::VERTEX,
-            })
+    maybe_buffers: Option<(&[Vertex], &[u32])>,
+) -> Option<[wgpu::Buffer; 2]> {
+    maybe_buffers.map(|(vertices, indices)| {
+        [
+            ctx.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Vertex Buffer"),
+                    contents: bytemuck::cast_slice(vertices),
+                    usage: wgpu::BufferUsages::VERTEX,
+                }),
+            ctx.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Index Buffer"),
+                    contents: bytemuck::cast_slice(indices),
+                    usage: wgpu::BufferUsages::INDEX,
+                }),
+        ]
     })
 }
 
@@ -263,7 +274,7 @@ fn create_pipeline(
     pipeline_layout: &wgpu::PipelineLayout,
     surface_format: wgpu::TextureFormat,
     compiled_shader_modules: CompiledShaderModules,
-    has_vertex_buffer: bool,
+    has_buffers: bool,
 ) -> wgpu::RenderPipeline {
     // FIXME(eddyb) automate this decision by default.
     let create_module = |module| {
@@ -305,11 +316,7 @@ fn create_pipeline(
         vertex: wgpu::VertexState {
             module: vs_module,
             entry_point: vs_entry_point,
-            buffers: if has_vertex_buffer {
-                buffers
-            } else {
-                buffers_empty
-            },
+            buffers: if has_buffers { buffers } else { buffers_empty },
         },
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
@@ -320,7 +327,7 @@ fn create_pipeline(
             polygon_mode: wgpu::PolygonMode::Fill,
             conservative: false,
         },
-        depth_stencil: if has_vertex_buffer {
+        depth_stencil: if has_buffers {
             Some(wgpu::DepthStencilState {
                 format: crate::texture::Texture::DEPTH_FORMAT,
                 depth_write_enabled: true,
