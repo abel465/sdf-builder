@@ -14,6 +14,7 @@ mod window;
 mod model;
 mod camera;
 mod texture;
+mod egui_components;
 
 #[derive(EnumString, EnumIter, Display, PartialEq, Eq, Copy, Clone)]
 pub enum RustGPUShader {
