@@ -112,6 +112,7 @@ impl Ui {
             egui::Window::new(ui_state.active_shader.to_string())
                 .resizable(false)
                 .anchor(Align2::RIGHT_TOP, window_margin * vec2(-1.0, 1.0))
+                .default_width(120.0)
                 .show(ctx, |ui| {
                     controller.ui(ctx, ui, &self.event_proxy);
                 });

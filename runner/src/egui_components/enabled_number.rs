@@ -4,8 +4,8 @@ use std::ops::RangeInclusive;
 
 #[derive(Clone, Copy)]
 pub struct EnabledNumber {
-    value: f32,
-    enabled: bool,
+    pub value: f32,
+    pub enabled: bool,
 }
 
 impl EnabledNumber {
@@ -13,9 +13,9 @@ impl EnabledNumber {
         Self { value, enabled }
     }
 
-    pub fn ui(&mut self, ui: &mut Ui, clamp_range: RangeInclusive<f32>, speed: f32) {
+    pub fn ui(&mut self, ui: &mut Ui, text: &str, clamp_range: RangeInclusive<f32>, speed: f32) {
         ui.horizontal(|ui| {
-            ui.checkbox(&mut self.enabled, "Onion");
+            ui.checkbox(&mut self.enabled, text);
             ui.add_enabled(
                 self.enabled,
                 egui::DragValue::new(&mut self.value)
