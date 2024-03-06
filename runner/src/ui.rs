@@ -1,6 +1,6 @@
 use egui::{
     epaint::{textures::TexturesDelta, ClippedPrimitive},
-    vec2, Align2, Context, CursorIcon, Layout, Vec2,
+    vec2, Align2, Context, Layout, Vec2,
 };
 use strum::IntoEnumIterator;
 use winit::{event::WindowEvent, event_loop::EventLoopProxy};
@@ -17,7 +17,6 @@ pub struct UiState {
     pub show_fps: bool,
     pub vsync: bool,
     pub active_shader: RustGPUShader,
-    pub cursor_icon: CursorIcon,
 }
 
 impl UiState {
@@ -27,7 +26,6 @@ impl UiState {
             show_fps: true,
             vsync: true,
             active_shader,
-            cursor_icon: CursorIcon::default(),
         }
     }
 }

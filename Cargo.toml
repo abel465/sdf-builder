@@ -13,6 +13,7 @@ members = [
   "shaders/hydrogen-wavefunction",
   "shaders/spherical-harmonics",
   "shaders/spherical-harmonics-shape",
+  "shaders/fun-rep-demo",
 ]
 default-members = ["runner"]
 

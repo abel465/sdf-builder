@@ -7,6 +7,8 @@ use crate::{
     ui::{Ui, UiState},
     Options,
 };
+use bytemuck::Zeroable;
+use shared::interpreter::OpCodeStruct;
 use wgpu::{util::DeviceExt, TextureView};
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -27,6 +29,7 @@ pub struct RenderPass {
     ui_renderer: egui_wgpu::Renderer,
     options: Options,
     buffers: Option<[wgpu::Buffer; 2]>,
+    ops_bind_group: wgpu::BindGroup,
 }
 
 impl RenderPass {
@@ -36,11 +39,27 @@ impl RenderPass {
         options: Options,
         maybe_buffers: Option<(&[Vertex], &[u32])>,
     ) -> Self {
+        let ops_bind_group_layout =
+            ctx.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    entries: &[wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    }],
+                    label: Some("ops_bind_group_layout"),
+                });
+
         let pipeline_layout = ctx
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: None,
-                bind_group_layouts: &[],
+                bind_group_layouts: &[&ops_bind_group_layout],
                 push_constant_ranges: &[wgpu::PushConstantRange {
                     stages: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     range: 0..shared::push_constants::largest_size() as u32,
@@ -59,12 +78,36 @@ impl RenderPass {
 
         let ui_renderer = egui_wgpu::Renderer::new(&ctx.device, ctx.config.format, None, 1);
 
+        // let mut ops_uniform = CameraUniform::new();
+        // ops_uniform.update_view_proj(&camera);
+        let ops = crate::sdfs_2d::sdf();
+        let mut ops: Vec<OpCodeStruct> = ops.iter().map(|op| (*op).into()).collect();
+        ops.resize(256, OpCodeStruct::zeroed());
+
+        let ops_buffer = ctx
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Ops Buffer"),
+                contents: bytemuck::cast_slice(ops.as_slice()),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
+
+        let ops_bind_group = ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &ops_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: ops_buffer.as_entire_binding(),
+            }],
+            label: Some("ops_bind_group"),
+        });
+
         Self {
             pipeline_layout,
             render_pipeline,
             ui_renderer,
             options,
             buffers,
+            ops_bind_group,
         }
     }
 
@@ -147,6 +190,7 @@ impl RenderPass {
                 0,
                 controller.push_constants(),
             );
+            rpass.set_bind_group(0, &self.ops_bind_group, &[]);
             if let Some([vertex_buffer, index_buffer]) = &self.buffers {
                 rpass.set_vertex_buffer(0, vertex_buffer.slice(..));
                 rpass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);

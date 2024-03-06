@@ -8,3 +8,4 @@ pub mod sdfs_3d;
 pub mod sierpinski_triangle;
 pub mod spherical_harmonics;
 pub mod spherical_harmonics_shape;
+pub mod fun_rep_demo;
