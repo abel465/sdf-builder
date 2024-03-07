@@ -42,12 +42,7 @@ impl State {
 
         let controller = &controllers[ui_state.active_shader as usize];
 
-        let rpass = RenderPass::new(
-            &ctx,
-            compiled_shader_modules,
-            options,
-            controller.buffers(),
-        );
+        let rpass = RenderPass::new(&ctx, compiled_shader_modules, options, controller.buffers());
 
         let depth_texture =
             Texture::create_depth_texture(&ctx.device, &ctx.config, "depth_texture");
@@ -97,7 +92,10 @@ impl State {
 
     pub fn render(&mut self, window: &winit::window::Window) -> Result<(), wgpu::SurfaceError> {
         let controller = &mut *self.controllers[self.ui_state.active_shader as usize];
-        let depth_texture = controller.buffers().map(|_| &self.depth_texture);
+        let depth_texture = controller
+            .buffers()
+            .use_depth_buffer
+            .then_some(&self.depth_texture);
 
         self.rpass.render(
             &self.ctx,

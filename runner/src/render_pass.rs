@@ -1,15 +1,13 @@
 use crate::{
     context::GraphicsContext,
-    controller::Controller,
+    controller::{BufferData, Controller},
     model::Vertex,
     shader::CompiledShaderModules,
     texture::Texture,
     ui::{Ui, UiState},
     Options,
 };
-use bytemuck::Zeroable;
-use shared::interpreter::OpCodeStruct;
-use wgpu::{util::DeviceExt, TextureView};
+use wgpu::{util::DeviceExt, BindGroupLayout, TextureView};
 
 #[cfg(not(target_arch = "wasm32"))]
 mod shaders {
@@ -28,8 +26,9 @@ pub struct RenderPass {
     render_pipeline: wgpu::RenderPipeline,
     ui_renderer: egui_wgpu::Renderer,
     options: Options,
-    buffers: Option<[wgpu::Buffer; 2]>,
-    ops_bind_group: wgpu::BindGroup,
+    vertex_buffer: Option<wgpu::Buffer>,
+    index_buffer: Option<wgpu::Buffer>,
+    bind_group: Option<wgpu::BindGroup>,
 }
 
 impl RenderPass {
@@ -37,29 +36,13 @@ impl RenderPass {
         ctx: &GraphicsContext,
         compiled_shader_modules: CompiledShaderModules,
         options: Options,
-        maybe_buffers: Option<(&[Vertex], &[u32])>,
+        buffer_data: BufferData,
     ) -> Self {
-        let ops_bind_group_layout =
-            ctx.device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    entries: &[wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    }],
-                    label: Some("ops_bind_group_layout"),
-                });
-
         let pipeline_layout = ctx
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: None,
-                bind_group_layouts: &[&ops_bind_group_layout],
+                bind_group_layouts: &[&bind_group_layout(ctx)],
                 push_constant_ranges: &[wgpu::PushConstantRange {
                     stages: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     range: 0..shared::push_constants::largest_size() as u32,
@@ -72,42 +55,22 @@ impl RenderPass {
             &pipeline_layout,
             ctx.config.format,
             compiled_shader_modules,
-            maybe_buffers.is_some(),
+            buffer_data,
         );
-        let buffers = maybe_create_buffers(ctx, maybe_buffers);
+        let vertex_buffer = maybe_create_vertex_buffer(ctx, buffer_data);
+        let index_buffer = maybe_create_index_buffer(ctx, buffer_data);
+        let bind_group = maybe_create_bind_group(ctx, buffer_data);
 
         let ui_renderer = egui_wgpu::Renderer::new(&ctx.device, ctx.config.format, None, 1);
-
-        // let mut ops_uniform = CameraUniform::new();
-        // ops_uniform.update_view_proj(&camera);
-        let ops = crate::sdfs_2d::sdf();
-        let mut ops: Vec<OpCodeStruct> = ops.iter().map(|op| (*op).into()).collect();
-        ops.resize(256, OpCodeStruct::zeroed());
-
-        let ops_buffer = ctx
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Ops Buffer"),
-                contents: bytemuck::cast_slice(ops.as_slice()),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            });
-
-        let ops_bind_group = ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &ops_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: ops_buffer.as_entire_binding(),
-            }],
-            label: Some("ops_bind_group"),
-        });
 
         Self {
             pipeline_layout,
             render_pipeline,
             ui_renderer,
             options,
-            buffers,
-            ops_bind_group,
+            vertex_buffer,
+            index_buffer,
+            bind_group,
         }
     }
 
@@ -164,7 +127,7 @@ impl RenderPass {
                     view: &output_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(if self.buffers.is_some() {
+                        load: wgpu::LoadOp::Clear(if self.index_buffer.is_some() {
                             wgpu::Color::BLACK
                         } else {
                             wgpu::Color::GREEN
@@ -190,15 +153,24 @@ impl RenderPass {
                 0,
                 controller.push_constants(),
             );
-            rpass.set_bind_group(0, &self.ops_bind_group, &[]);
-            if let Some([vertex_buffer, index_buffer]) = &self.buffers {
+            if let Some(bind_group) = &self.bind_group {
+                rpass.set_bind_group(0, bind_group, &[]);
+            }
+            if let Some(vertex_buffer) = &self.vertex_buffer {
                 rpass.set_vertex_buffer(0, vertex_buffer.slice(..));
-                rpass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-                let num_indices = index_buffer.size() as u32 / std::mem::size_of::<u32>() as u32;
-                rpass.draw_indexed(0..num_indices, 0, 0..1);
+                if let Some(index_buffer) = &self.index_buffer {
+                    rpass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                    let num_indices =
+                        index_buffer.size() as u32 / std::mem::size_of::<u32>() as u32;
+                    rpass.draw_indexed(0..num_indices, 0, 0..1);
+                } else {
+                    let num_vertices =
+                        vertex_buffer.size() as u32 / std::mem::size_of::<Vertex>() as u32;
+                    rpass.draw(0..num_vertices, 0..1);
+                }
             } else {
                 rpass.draw(0..3, 0..1);
-            };
+            }
         }
 
         ctx.queue.submit(Some(encoder.finish()));
@@ -268,47 +240,74 @@ impl RenderPass {
         &mut self,
         ctx: &GraphicsContext,
         new_module: CompiledShaderModules,
-        maybe_buffers: Option<(&[Vertex], &[u32])>,
+        buffer_data: BufferData,
     ) {
-        self.buffers = maybe_create_buffers(ctx, maybe_buffers);
+        self.new_vertices(ctx, buffer_data);
         self.render_pipeline = create_pipeline(
             &self.options,
             &ctx.device,
             &self.pipeline_layout,
             ctx.config.format,
             new_module,
-            maybe_buffers.is_some(),
+            buffer_data,
         );
     }
 
-    pub fn new_vertices(
-        &mut self,
-        ctx: &GraphicsContext,
-        maybe_buffers: Option<(&[Vertex], &[u32])>,
-    ) {
-        self.buffers = maybe_create_buffers(ctx, maybe_buffers);
+    pub fn new_vertices(&mut self, ctx: &GraphicsContext, buffer_data: BufferData) {
+        self.vertex_buffer = maybe_create_vertex_buffer(ctx, buffer_data);
+        self.index_buffer = maybe_create_index_buffer(ctx, buffer_data);
+        self.bind_group = maybe_create_bind_group(ctx, buffer_data);
     }
 }
 
-fn maybe_create_buffers(
+fn maybe_create_vertex_buffer(
     ctx: &GraphicsContext,
-    maybe_buffers: Option<(&[Vertex], &[u32])>,
-) -> Option<[wgpu::Buffer; 2]> {
-    maybe_buffers.map(|(vertices, indices)| {
-        [
-            ctx.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Vertex Buffer"),
-                    contents: bytemuck::cast_slice(vertices),
-                    usage: wgpu::BufferUsages::VERTEX,
-                }),
-            ctx.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Index Buffer"),
-                    contents: bytemuck::cast_slice(indices),
-                    usage: wgpu::BufferUsages::INDEX,
-                }),
-        ]
+    buffer_data: BufferData,
+) -> Option<wgpu::Buffer> {
+    buffer_data.vertex.map(|vertices| {
+        ctx.device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Vertex Buffer"),
+                contents: bytemuck::cast_slice(vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            })
+    })
+}
+
+fn maybe_create_index_buffer(
+    ctx: &GraphicsContext,
+    buffer_data: BufferData,
+) -> Option<wgpu::Buffer> {
+    buffer_data.index.map(|indices| {
+        ctx.device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Index Buffer"),
+                contents: bytemuck::cast_slice(indices),
+                usage: wgpu::BufferUsages::INDEX,
+            })
+    })
+}
+
+fn maybe_create_bind_group(
+    ctx: &GraphicsContext,
+    buffer_data: BufferData,
+) -> Option<wgpu::BindGroup> {
+    buffer_data.uniform.map(|uniform| {
+        let buffer = ctx
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Bind Group Buffer"),
+                contents: uniform,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
+        ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &bind_group_layout(ctx),
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: buffer.as_entire_binding(),
+            }],
+            label: Some("bind_group"),
+        })
     })
 }
 
@@ -318,7 +317,7 @@ fn create_pipeline(
     pipeline_layout: &wgpu::PipelineLayout,
     surface_format: wgpu::TextureFormat,
     compiled_shader_modules: CompiledShaderModules,
-    has_buffers: bool,
+    buffer_data: BufferData,
 ) -> wgpu::RenderPipeline {
     // FIXME(eddyb) automate this decision by default.
     let create_module = |module| {
@@ -360,7 +359,11 @@ fn create_pipeline(
         vertex: wgpu::VertexState {
             module: vs_module,
             entry_point: vs_entry_point,
-            buffers: if has_buffers { buffers } else { buffers_empty },
+            buffers: if buffer_data.vertex.is_some() {
+                buffers
+            } else {
+                buffers_empty
+            },
         },
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
@@ -371,7 +374,7 @@ fn create_pipeline(
             polygon_mode: wgpu::PolygonMode::Fill,
             conservative: false,
         },
-        depth_stencil: if has_buffers {
+        depth_stencil: if buffer_data.use_depth_buffer {
             Some(wgpu::DepthStencilState {
                 format: crate::texture::Texture::DEPTH_FORMAT,
                 depth_write_enabled: true,
@@ -398,4 +401,21 @@ fn create_pipeline(
         }),
         multiview: None,
     })
+}
+
+fn bind_group_layout(ctx: &GraphicsContext) -> BindGroupLayout {
+    ctx.device
+        .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+            label: Some("bind_group_layout"),
+        })
 }

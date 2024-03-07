@@ -8,6 +8,25 @@ use winit::event::{ElementState, MouseScrollDelta};
 use winit::event_loop::EventLoopProxy;
 use winit::{dpi::PhysicalPosition, event::MouseButton};
 
+#[derive(Clone, Copy)]
+pub struct BufferData<'a> {
+    pub vertex: Option<&'a [Vertex]>,
+    pub index: Option<&'a [u32]>,
+    pub uniform: Option<&'a [u8]>,
+    pub use_depth_buffer: bool,
+}
+
+impl<'a> Default for BufferData<'a> {
+    fn default() -> Self {
+        Self {
+            vertex: None,
+            index: None,
+            uniform: None,
+            use_depth_buffer: false,
+        }
+    }
+}
+
 pub trait Controller {
     fn new(size: PhysicalSize<u32>) -> Self
     where
@@ -22,8 +41,8 @@ pub trait Controller {
     fn has_ui(&self) -> bool {
         false
     }
-    fn buffers(&self) -> Option<(&[Vertex],&[u32])> {
-        None
+    fn buffers(&self) -> BufferData {
+        BufferData::default()
     }
 }
 
@@ -43,8 +62,7 @@ pub fn new_controller(shader: RustGPUShader, size: PhysicalSize<u32>) -> Box<dyn
         RustGPUShader::SphericalHarmonicsShape => {
             Box::new(spherical_harmonics_shape::Controller::new(size))
         }
-        RustGPUShader::FunRepDemo => {
-            Box::new(fun_rep_demo::Controller::new(size))
-        }
+        RustGPUShader::FunRepDemo => Box::new(fun_rep_demo::Controller::new(size)),
+        RustGPUShader::SdfsPixelGrid => Box::new(sdfs_pixel_grid::Controller::new(size)),
     }
 }
