@@ -42,7 +42,7 @@ impl State {
 
         let controller = &controllers[ui_state.active_shader as usize];
 
-        let rpass = RenderPass::new(&ctx, compiled_shader_modules, options, controller.buffers());
+        let rpass = RenderPass::new(&ctx, compiled_shader_modules, options, &controller.buffers());
 
         let depth_texture =
             Texture::create_depth_texture(&ctx.device, &ctx.config, "depth_texture");
@@ -123,12 +123,12 @@ impl State {
         let controller = &self.controllers[shader as usize];
         let buffers = controller.buffers();
         self.ui_state.active_shader = shader;
-        self.rpass.new_module(&self.ctx, new_module, buffers);
+        self.rpass.new_module(&self.ctx, new_module, &buffers);
     }
 
     pub fn new_vertices(&mut self) {
         let controller = &self.controllers[self.ui_state.active_shader as usize];
-        self.rpass.new_vertices(&self.ctx, controller.buffers());
+        self.rpass.new_vertices(&self.ctx, &controller.buffers());
     }
 
     pub fn switch_shader(&mut self, shader: RustGPUShader) {

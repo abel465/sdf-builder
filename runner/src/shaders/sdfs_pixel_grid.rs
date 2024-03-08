@@ -12,7 +12,10 @@ use winit::{
     event_loop::EventLoopProxy,
 };
 
-use crate::{controller::BufferData, window::UserEvent};
+use crate::{
+    controller::{BindGroupBufferType, BufferData, SSBO},
+    window::UserEvent,
+};
 
 pub struct Controller {
     size: PhysicalSize<u32>,
@@ -127,7 +130,10 @@ impl crate::controller::Controller for Controller {
 
     fn buffers(&self) -> BufferData {
         BufferData {
-            uniform: Some(bytemuck::cast_slice(&self.grid.grid)),
+            bind_group_buffers: vec![BindGroupBufferType::SSBO(SSBO {
+                data: bytemuck::cast_slice(&self.grid.grid),
+                read_only: true,
+            })],
             ..Default::default()
         }
     }

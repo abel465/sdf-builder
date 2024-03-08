@@ -1,6 +1,6 @@
 use crate::{
     context::GraphicsContext,
-    controller::{BufferData, Controller},
+    controller::{BindGroupBufferType, BufferData, Controller, SSBO},
     model::Vertex,
     shader::CompiledShaderModules,
     texture::Texture,
@@ -27,7 +27,7 @@ pub struct RenderPass {
     options: Options,
     vertex_buffer: Option<wgpu::Buffer>,
     index_buffer: Option<wgpu::Buffer>,
-    bind_group: Option<wgpu::BindGroup>,
+    bind_groups: Vec<wgpu::BindGroup>,
 }
 
 impl RenderPass {
@@ -35,19 +35,15 @@ impl RenderPass {
         ctx: &GraphicsContext,
         compiled_shader_modules: CompiledShaderModules,
         options: Options,
-        buffer_data: BufferData,
+        buffer_data: &BufferData,
     ) -> Self {
-        let bind_group_layouts_empty = &[];
-        let bind_group_layouts = &[&bind_group_layout(ctx)];
+        let layouts = bind_group_layouts(ctx, buffer_data);
+        let layout_refs = &layouts.iter().collect::<Vec<_>>();
         let pipeline_layout = ctx
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: None,
-                bind_group_layouts: if buffer_data.uniform.is_some() {
-                    bind_group_layouts
-                } else {
-                    bind_group_layouts_empty
-                },
+                bind_group_layouts: layout_refs,
                 push_constant_ranges: &[wgpu::PushConstantRange {
                     stages: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     range: 0..shared::push_constants::largest_size() as u32,
@@ -64,7 +60,7 @@ impl RenderPass {
         );
         let vertex_buffer = maybe_create_vertex_buffer(ctx, buffer_data);
         let index_buffer = maybe_create_index_buffer(ctx, buffer_data);
-        let bind_group = maybe_create_bind_group(ctx, buffer_data);
+        let bind_groups = maybe_create_bind_groups(ctx, buffer_data);
 
         let ui_renderer = egui_wgpu::Renderer::new(&ctx.device, ctx.config.format, None, 1);
 
@@ -74,7 +70,7 @@ impl RenderPass {
             options,
             vertex_buffer,
             index_buffer,
-            bind_group,
+            bind_groups,
         }
     }
 
@@ -157,8 +153,8 @@ impl RenderPass {
                 0,
                 controller.push_constants(),
             );
-            if let Some(bind_group) = &self.bind_group {
-                rpass.set_bind_group(0, bind_group, &[]);
+            for (i, bind_group) in self.bind_groups.iter().enumerate() {
+                rpass.set_bind_group(i as u32, bind_group, &[]);
             }
             if let Some(vertex_buffer) = &self.vertex_buffer {
                 rpass.set_vertex_buffer(0, vertex_buffer.slice(..));
@@ -244,20 +240,16 @@ impl RenderPass {
         &mut self,
         ctx: &GraphicsContext,
         new_module: CompiledShaderModules,
-        buffer_data: BufferData,
+        buffer_data: &BufferData,
     ) {
         self.new_vertices(ctx, buffer_data);
-        let bind_group_layouts_empty = &[];
-        let bind_group_layouts = &[&bind_group_layout(ctx)];
+        let layouts = bind_group_layouts(ctx, buffer_data);
+        let layout_refs = &layouts.iter().collect::<Vec<_>>();
         let pipeline_layout = ctx
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: None,
-                bind_group_layouts: if buffer_data.uniform.is_some() {
-                    bind_group_layouts
-                } else {
-                    bind_group_layouts_empty
-                },
+                bind_group_layouts: layout_refs,
                 push_constant_ranges: &[wgpu::PushConstantRange {
                     stages: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     range: 0..shared::push_constants::largest_size() as u32,
@@ -273,16 +265,16 @@ impl RenderPass {
         );
     }
 
-    pub fn new_vertices(&mut self, ctx: &GraphicsContext, buffer_data: BufferData) {
+    pub fn new_vertices(&mut self, ctx: &GraphicsContext, buffer_data: &BufferData) {
         self.vertex_buffer = maybe_create_vertex_buffer(ctx, buffer_data);
         self.index_buffer = maybe_create_index_buffer(ctx, buffer_data);
-        self.bind_group = maybe_create_bind_group(ctx, buffer_data);
+        self.bind_groups = maybe_create_bind_groups(ctx, buffer_data);
     }
 }
 
 fn maybe_create_vertex_buffer(
     ctx: &GraphicsContext,
-    buffer_data: BufferData,
+    buffer_data: &BufferData,
 ) -> Option<wgpu::Buffer> {
     buffer_data.vertex.map(|vertices| {
         ctx.device
@@ -296,7 +288,7 @@ fn maybe_create_vertex_buffer(
 
 fn maybe_create_index_buffer(
     ctx: &GraphicsContext,
-    buffer_data: BufferData,
+    buffer_data: &BufferData,
 ) -> Option<wgpu::Buffer> {
     buffer_data.index.map(|indices| {
         ctx.device
@@ -308,27 +300,38 @@ fn maybe_create_index_buffer(
     })
 }
 
-fn maybe_create_bind_group(
+fn maybe_create_bind_groups(
     ctx: &GraphicsContext,
-    buffer_data: BufferData,
-) -> Option<wgpu::BindGroup> {
-    buffer_data.uniform.map(|uniform| {
-        let buffer = ctx
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Bind Group Buffer"),
-                contents: uniform,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+    buffer_data: &BufferData,
+) -> Vec<wgpu::BindGroup> {
+    buffer_data
+        .bind_group_buffers
+        .iter()
+        .zip(bind_group_layouts(ctx, buffer_data))
+        .enumerate()
+        .map(|(i, (buffer, layout))| {
+            let buffer = ctx.device.create_buffer_init(&match buffer {
+                BindGroupBufferType::SSBO(ssbo) => wgpu::util::BufferInitDescriptor {
+                    label: Some("Bind Group Buffer"),
+                    contents: ssbo.data,
+                    usage: wgpu::BufferUsages::STORAGE,
+                },
+                BindGroupBufferType::Uniform(uniform) => wgpu::util::BufferInitDescriptor {
+                    label: Some("Bind Group Buffer"),
+                    contents: uniform.data,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                },
             });
-        ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &bind_group_layout(ctx),
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: buffer.as_entire_binding(),
-            }],
-            label: Some("bind_group"),
+            ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                layout: &layout,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: i as u32,
+                    resource: buffer.as_entire_binding(),
+                }],
+                label: Some("bind_group"),
+            })
         })
-    })
+        .collect()
 }
 
 fn create_pipeline(
@@ -337,7 +340,7 @@ fn create_pipeline(
     pipeline_layout: &wgpu::PipelineLayout,
     surface_format: wgpu::TextureFormat,
     compiled_shader_modules: CompiledShaderModules,
-    buffer_data: BufferData,
+    buffer_data: &BufferData,
 ) -> wgpu::RenderPipeline {
     // FIXME(eddyb) automate this decision by default.
     let create_module = |module| {
@@ -423,19 +426,33 @@ fn create_pipeline(
     })
 }
 
-fn bind_group_layout(ctx: &GraphicsContext) -> BindGroupLayout {
-    ctx.device
-        .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
-            label: Some("bind_group_layout"),
+fn bind_group_layouts(ctx: &GraphicsContext, buffer_data: &BufferData) -> Vec<BindGroupLayout> {
+    buffer_data
+        .bind_group_buffers
+        .iter()
+        .enumerate()
+        .map(|(i, buffer)| {
+            ctx.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    entries: &[wgpu::BindGroupLayoutEntry {
+                        binding: i as u32,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: (match buffer {
+                                BindGroupBufferType::Uniform(_) => wgpu::BufferBindingType::Uniform,
+                                BindGroupBufferType::SSBO(SSBO { read_only, .. }) => {
+                                    wgpu::BufferBindingType::Storage {
+                                        read_only: *read_only,
+                                    }
+                                }
+                            }),
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    }],
+                    label: Some("bind_group_layout"),
+                })
         })
+        .collect()
 }

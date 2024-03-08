@@ -8,11 +8,23 @@ use winit::event::{ElementState, MouseScrollDelta};
 use winit::event_loop::EventLoopProxy;
 use winit::{dpi::PhysicalPosition, event::MouseButton};
 
-#[derive(Clone, Copy)]
+pub enum BindGroupBufferType<'a> {
+    Uniform(Uniform<'a>),
+    SSBO(SSBO<'a>),
+}
+pub struct SSBO<'a> {
+    pub data: &'a [u8],
+    pub read_only: bool,
+}
+
+pub struct Uniform<'a> {
+    pub data: &'a [u8],
+}
+
 pub struct BufferData<'a> {
     pub vertex: Option<&'a [Vertex]>,
     pub index: Option<&'a [u32]>,
-    pub uniform: Option<&'a [u8]>,
+    pub bind_group_buffers: Vec<BindGroupBufferType<'a>>,
     pub use_depth_buffer: bool,
 }
 
@@ -21,7 +33,7 @@ impl<'a> Default for BufferData<'a> {
         Self {
             vertex: None,
             index: None,
-            uniform: None,
+            bind_group_buffers: Vec::new(),
             use_depth_buffer: false,
         }
     }
