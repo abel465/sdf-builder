@@ -22,7 +22,6 @@ mod shaders {
 }
 
 pub struct RenderPass {
-    pipeline_layout: wgpu::PipelineLayout,
     render_pipeline: wgpu::RenderPipeline,
     ui_renderer: egui_wgpu::Renderer,
     options: Options,
@@ -38,11 +37,17 @@ impl RenderPass {
         options: Options,
         buffer_data: BufferData,
     ) -> Self {
+        let bind_group_layouts_empty = &[];
+        let bind_group_layouts = &[&bind_group_layout(ctx)];
         let pipeline_layout = ctx
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: None,
-                bind_group_layouts: &[&bind_group_layout(ctx)],
+                bind_group_layouts: if buffer_data.uniform.is_some() {
+                    bind_group_layouts
+                } else {
+                    bind_group_layouts_empty
+                },
                 push_constant_ranges: &[wgpu::PushConstantRange {
                     stages: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     range: 0..shared::push_constants::largest_size() as u32,
@@ -64,7 +69,6 @@ impl RenderPass {
         let ui_renderer = egui_wgpu::Renderer::new(&ctx.device, ctx.config.format, None, 1);
 
         Self {
-            pipeline_layout,
             render_pipeline,
             ui_renderer,
             options,
@@ -243,10 +247,26 @@ impl RenderPass {
         buffer_data: BufferData,
     ) {
         self.new_vertices(ctx, buffer_data);
+        let bind_group_layouts_empty = &[];
+        let bind_group_layouts = &[&bind_group_layout(ctx)];
+        let pipeline_layout = ctx
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: None,
+                bind_group_layouts: if buffer_data.uniform.is_some() {
+                    bind_group_layouts
+                } else {
+                    bind_group_layouts_empty
+                },
+                push_constant_ranges: &[wgpu::PushConstantRange {
+                    stages: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                    range: 0..shared::push_constants::largest_size() as u32,
+                }],
+            });
         self.render_pipeline = create_pipeline(
             &self.options,
             &ctx.device,
-            &self.pipeline_layout,
+            &pipeline_layout,
             ctx.config.format,
             new_module,
             buffer_data,
