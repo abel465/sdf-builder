@@ -30,7 +30,7 @@ pub struct Controller {
 
 impl crate::controller::Controller for Controller {
     fn new(size: PhysicalSize<u32>) -> Self {
-        let mut grid = Grid::zeroed();
+        let mut grid = Grid::new();
         let half_cell_size = 0.5 / BASE as f32;
         for i in 0..NUM_X {
             for j in 0..NUM_Y {
