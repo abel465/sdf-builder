@@ -22,25 +22,19 @@ pub struct Controller {
     drag_point: Option<usize>,
     shader_constants: ShaderConstants,
     zoom: f32,
-    buffer: Grid,
+    grid: Grid,
 }
 
 impl crate::controller::Controller for Controller {
     fn new(size: PhysicalSize<u32>) -> Self {
-        let mut buffer = Grid::zeroed();
-
+        let mut grid = Grid::zeroed();
+        let half_cell_size = 0.5 / NUM_Y as f32;
         for i in 0..NUM_X {
-            for j in 0..NUM_Y / 4 {
-                for k in 0..4 {
-                    let x = (i as f32 / NUM_X as f32 - 0.5) * (NUM_X as f32 / NUM_Y as f32);
-                    let y = (j * 4 + k) as f32 / NUM_Y as f32 - 0.5;
-                    let p = vec2(x, y);
-                    buffer[i][j][k] = sdf(p);
-                    println!("{},{},{} {} {}", i, j, k, p, buffer[i][j][k]);
-                    let ii = ((p.x + 0.5) * NUM_X as f32).round() as usize;
-                    let jj = ((p.y + 0.5) * NUM_Y as f32).round() as usize;
-                    println!("{},{},{}", ii, jj / 4, jj % 4);
-                }
+            for j in 0..NUM_Y {
+                let x = (i as f32 - 0.5 * NUM_X as f32) / NUM_Y as f32 + half_cell_size;
+                let y = (j as f32 / NUM_Y as f32 - 0.5) + half_cell_size;
+                let value = sdf(vec2(x, y));
+                grid.set(i, j, value);
             }
         }
 
@@ -54,7 +48,7 @@ impl crate::controller::Controller for Controller {
             drag_point: None,
             shader_constants: ShaderConstants::zeroed(),
             zoom: 1.0,
-            buffer,
+            grid,
         }
     }
 
@@ -124,12 +118,12 @@ impl crate::controller::Controller for Controller {
 
     fn buffers(&self) -> BufferData {
         BufferData {
-            uniform: Some(bytemuck::cast_slice(&self.buffer)),
+            uniform: Some(bytemuck::cast_slice(&self.grid.grid)),
             ..Default::default()
         }
     }
 }
 
 fn sdf(p: Vec2) -> f32 {
-    sdf::disk(p, 0.3)
+    sdf::equilateral_triangle(p, 0.3)
 }

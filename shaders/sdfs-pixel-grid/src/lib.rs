@@ -1,6 +1,6 @@
 #![cfg_attr(target_arch = "spirv", no_std)]
 
-use push_constants::sdfs_pixel_grid::{Grid, ShaderConstants, NUM_X, NUM_Y};
+use push_constants::sdfs_pixel_grid::{Grid, ShaderConstants};
 use shared::sdf_2d as sdf;
 use shared::*;
 use spirv_std::glam::{vec3, Vec2, Vec3, Vec4, Vec4Swizzles};
@@ -9,17 +9,7 @@ use spirv_std::num_traits::Float;
 use spirv_std::spirv;
 
 fn sdf(p: Vec2, grid: &Grid) -> f32 {
-    // let b = if NUM_X>NUM_Y{NUM_Y as f32/NUM_X as f32} else {0.0};
-    let b = NUM_Y as f32/NUM_X as f32;
-    let i =
-        (p.x + 0.5 * b) * NUM_Y as f32;
-    let j = (p.y + 0.5) * NUM_Y as f32;
-    if i < 0.0 || i >= NUM_X as f32 || j < 0.0 || j >= NUM_Y as f32 {
-        return 1e20;
-    }
-    let i = i as usize;
-    let j = j as usize;
-    grid[i][j / 4].index(j % 4)
+    grid.from_vec2_smooth(p)
 }
 
 #[spirv(fragment)]
