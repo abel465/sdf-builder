@@ -20,7 +20,7 @@ fn sdf(p: Vec2, grid: &Grid, smooth: bool) -> f32 {
 pub fn main_fs(
     #[spirv(frag_coord)] frag_coord: Vec4,
     #[spirv(push_constant)] constants: &ShaderConstants,
-    #[spirv(uniform, descriptor_set = 0, binding = 0)] grid: &Grid,
+    #[spirv(storage_buffer, descriptor_set = 0, binding = 0)] grid: &Grid,
     output: &mut Vec4,
 ) {
     let uv = constants.zoom * from_pixels(frag_coord.xy(), constants.size);

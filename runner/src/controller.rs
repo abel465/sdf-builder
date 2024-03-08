@@ -9,9 +9,11 @@ use winit::event_loop::EventLoopProxy;
 use winit::{dpi::PhysicalPosition, event::MouseButton};
 
 pub enum BindGroupBufferType<'a> {
+    #[allow(dead_code)]
     Uniform(Uniform<'a>),
     SSBO(SSBO<'a>),
 }
+
 pub struct SSBO<'a> {
     pub data: &'a [u8],
     pub read_only: bool,
