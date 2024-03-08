@@ -2,13 +2,14 @@ use bytemuck::Zeroable;
 use egui::Context;
 use glam::{vec2, Vec2};
 use shared::{
-    push_constants::sdfs_pixel_grid::{Grid, ShaderConstants, NUM_X, NUM_Y},
+    push_constants::sdfs_pixel_grid::{Grid, ShaderConstants, BASE, NUM_X, NUM_Y},
     sdf_2d as sdf,
 };
 use std::time::{Duration, Instant};
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
-    event::{ElementState, MouseButton, MouseScrollDelta}, event_loop::EventLoopProxy,
+    event::{ElementState, MouseButton, MouseScrollDelta},
+    event_loop::EventLoopProxy,
 };
 
 use crate::{controller::BufferData, window::UserEvent};
@@ -30,11 +31,11 @@ pub struct Controller {
 impl crate::controller::Controller for Controller {
     fn new(size: PhysicalSize<u32>) -> Self {
         let mut grid = Grid::zeroed();
-        let half_cell_size = 0.5 / NUM_Y as f32;
+        let half_cell_size = 0.5 / BASE as f32;
         for i in 0..NUM_X {
             for j in 0..NUM_Y {
-                let x = (i as f32 - 0.5 * NUM_X as f32) / NUM_Y as f32 + half_cell_size;
-                let y = (j as f32 / NUM_Y as f32 - 0.5) + half_cell_size;
+                let x = (i as f32 - 0.5 * NUM_X as f32) / BASE as f32 + half_cell_size;
+                let y = (j as f32 - 0.5 * NUM_Y as f32) / BASE as f32 + half_cell_size;
                 let value = sdf(vec2(x, y));
                 grid.set(i, j, value);
             }
@@ -96,7 +97,7 @@ impl crate::controller::Controller for Controller {
     }
 
     fn resize(&mut self, size: PhysicalSize<u32>) {
-        self.size = size
+        self.size = size;
     }
 
     fn update(&mut self) {
@@ -133,5 +134,6 @@ impl crate::controller::Controller for Controller {
 }
 
 fn sdf(p: Vec2) -> f32 {
-    sdf::equilateral_triangle(p, 0.3)
+    // sdf::equilateral_triangle(p, 0.3)
+    sdf::disk(p, 0.3)
 }
