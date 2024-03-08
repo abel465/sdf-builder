@@ -1,4 +1,5 @@
 use bytemuck::Zeroable;
+use egui::Context;
 use glam::{vec2, Vec2};
 use shared::{
     push_constants::sdfs_pixel_grid::{Grid, ShaderConstants, NUM_X, NUM_Y},
@@ -7,10 +8,10 @@ use shared::{
 use std::time::{Duration, Instant};
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
-    event::{ElementState, MouseButton, MouseScrollDelta},
+    event::{ElementState, MouseButton, MouseScrollDelta}, event_loop::EventLoopProxy,
 };
 
-use crate::controller::BufferData;
+use crate::{controller::BufferData, window::UserEvent};
 
 pub struct Controller {
     size: PhysicalSize<u32>,
@@ -23,6 +24,7 @@ pub struct Controller {
     shader_constants: ShaderConstants,
     zoom: f32,
     grid: Grid,
+    smooth: bool,
 }
 
 impl crate::controller::Controller for Controller {
@@ -49,6 +51,7 @@ impl crate::controller::Controller for Controller {
             shader_constants: ShaderConstants::zeroed(),
             zoom: 1.0,
             grid,
+            smooth: false,
         }
     }
 
@@ -105,6 +108,7 @@ impl crate::controller::Controller for Controller {
             mouse_button_pressed: !(1
                 << (self.mouse_button_pressed && self.drag_point.is_none()) as u32),
             zoom: self.zoom,
+            smooth: self.smooth.into(),
         };
     }
 
@@ -113,7 +117,11 @@ impl crate::controller::Controller for Controller {
     }
 
     fn has_ui(&self) -> bool {
-        false
+        true
+    }
+
+    fn ui(&mut self, _ctx: &Context, ui: &mut egui::Ui, _: &EventLoopProxy<UserEvent>) {
+        ui.checkbox(&mut self.smooth, "Smooth");
     }
 
     fn buffers(&self) -> BufferData {
