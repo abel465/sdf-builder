@@ -29,7 +29,6 @@ pub enum RustGPUShader {
     SphericalHarmonics,
     SphericalHarmonicsShape,
     FunRepDemo,
-    SdfsPixelGrid,
 }
 
 #[derive(StructOpt, Clone)]

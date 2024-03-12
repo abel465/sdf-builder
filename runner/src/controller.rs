@@ -77,6 +77,5 @@ pub fn new_controller(shader: RustGPUShader, size: PhysicalSize<u32>) -> Box<dyn
             Box::new(spherical_harmonics_shape::Controller::new(size))
         }
         RustGPUShader::FunRepDemo => Box::new(fun_rep_demo::Controller::new(size)),
-        RustGPUShader::SdfsPixelGrid => Box::new(sdfs_pixel_grid::Controller::new(size)),
     }
 }
