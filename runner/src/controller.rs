@@ -4,7 +4,7 @@ use crate::{shaders, RustGPUShader};
 use egui::{Context, Ui};
 use shaders::*;
 use winit::dpi::PhysicalSize;
-use winit::event::{ElementState, MouseScrollDelta};
+use winit::event::{ElementState, KeyboardInput, MouseScrollDelta};
 use winit::event_loop::EventLoopProxy;
 use winit::{dpi::PhysicalPosition, event::MouseButton};
 
@@ -45,8 +45,10 @@ pub trait Controller {
     fn new(size: PhysicalSize<u32>) -> Self
     where
         Self: Sized;
+    fn keyboard_input(&mut self, _input: KeyboardInput) {}
     fn mouse_input(&mut self, _state: ElementState, _button: MouseButton) {}
     fn mouse_move(&mut self, _position: PhysicalPosition<f64>) {}
+    fn mouse_delta(&mut self, _delta: (f64, f64)) {}
     fn mouse_scroll(&mut self, _delta: MouseScrollDelta) {}
     fn resize(&mut self, size: PhysicalSize<u32>);
     fn update(&mut self);
@@ -57,6 +59,9 @@ pub trait Controller {
     }
     fn buffers(&self) -> BufferData {
         BufferData::default()
+    }
+    fn cursor_visible(&self) -> bool {
+        true
     }
 }
 

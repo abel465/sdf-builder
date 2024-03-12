@@ -8,11 +8,10 @@ use crate::{
     window::Window,
     Options, RustGPUShader,
 };
-
 use strum::IntoEnumIterator;
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
-    event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent},
+    event::{ElementState, KeyboardInput, MouseButton, MouseScrollDelta, WindowEvent},
 };
 
 pub struct State {
@@ -42,7 +41,12 @@ impl State {
 
         let controller = &controllers[ui_state.active_shader as usize];
 
-        let rpass = RenderPass::new(&ctx, compiled_shader_modules, options, &controller.buffers());
+        let rpass = RenderPass::new(
+            &ctx,
+            compiled_shader_modules,
+            options,
+            &controller.buffers(),
+        );
 
         let depth_texture =
             Texture::create_depth_texture(&ctx.device, &ctx.config, "depth_texture");
@@ -74,12 +78,20 @@ impl State {
         }
     }
 
+    pub fn keyboard_input(&mut self, input: KeyboardInput) {
+        self.controller().keyboard_input(input);
+    }
+
     pub fn mouse_input(&mut self, state: ElementState, button: MouseButton) {
         self.controller().mouse_input(state, button);
     }
 
     pub fn mouse_move(&mut self, position: PhysicalPosition<f64>) {
         self.controller().mouse_move(position);
+    }
+
+    pub fn mouse_delta(&mut self, position: (f64, f64)) {
+        self.controller().mouse_delta(position);
     }
 
     pub fn mouse_scroll(&mut self, delta: MouseScrollDelta) {
@@ -146,5 +158,10 @@ impl State {
 
     pub fn set_vsync(&mut self, enable: bool) {
         self.ctx.set_vsync(enable);
+    }
+
+    pub fn cursor_visible(&self) -> bool {
+        let controller = &self.controllers[self.ui_state.active_shader as usize];
+        controller.cursor_visible()
     }
 }

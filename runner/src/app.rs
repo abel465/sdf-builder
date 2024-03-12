@@ -4,10 +4,10 @@ use crate::{
     window::{UserEvent, Window},
     Options,
 };
-
 use winit::{
-    event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
+    event::{DeviceEvent, ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::ControlFlow,
+    window::CursorGrabMode,
 };
 
 async fn run(options: Options, window: Window, compiled_shader_modules: CompiledShaderModules) {
@@ -43,13 +43,36 @@ async fn run(options: Options, window: Window, compiled_shader_modules: Compiled
                             },
                         ..
                     } => *control_flow = ControlFlow::Exit,
+                    WindowEvent::KeyboardInput { input, .. } => app.keyboard_input(input),
                     WindowEvent::Resized(size) => app.resize(size),
                     WindowEvent::MouseInput { state, button, .. } => app.mouse_input(state, button),
                     WindowEvent::MouseWheel { delta, .. } => app.mouse_scroll(delta),
-                    WindowEvent::CursorMoved { position, .. } => app.mouse_move(position),
+                    WindowEvent::CursorMoved { position, .. } => {
+                        if window.has_focus() {
+                            if app.cursor_visible() {
+                                window.set_cursor_grab(CursorGrabMode::None).unwrap();
+                                window.set_cursor_visible(true);
+                            } else {
+                                window
+                                    .set_cursor_grab(CursorGrabMode::Confined)
+                                    .or_else(|_| window.set_cursor_grab(CursorGrabMode::Locked))
+                                    .unwrap();
+                                window.set_cursor_visible(false);
+                            }
+                        }
+                        app.mouse_move(position)
+                    }
+                    WindowEvent::CursorLeft { .. } => {
+                        window.set_cursor_grab(CursorGrabMode::None).unwrap();
+                        window.set_cursor_visible(true);
+                    }
                     _ => {}
                 }
             }
+            Event::DeviceEvent {
+                event: DeviceEvent::MouseMotion { delta },
+                ..
+            } => app.mouse_delta(delta),
             Event::UserEvent(event) => match event {
                 UserEvent::NewModule(shader, new_module) => {
                     app.new_module(shader, new_module);
