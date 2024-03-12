@@ -242,7 +242,7 @@ impl RenderPass {
         new_module: CompiledShaderModules,
         buffer_data: &BufferData,
     ) {
-        self.new_vertices(ctx, buffer_data);
+        self.new_buffers(ctx, buffer_data);
         let layouts = bind_group_layouts(ctx, buffer_data);
         let layout_refs = &layouts.iter().collect::<Vec<_>>();
         let pipeline_layout = ctx
@@ -265,7 +265,7 @@ impl RenderPass {
         );
     }
 
-    pub fn new_vertices(&mut self, ctx: &GraphicsContext, buffer_data: &BufferData) {
+    pub fn new_buffers(&mut self, ctx: &GraphicsContext, buffer_data: &BufferData) {
         self.vertex_buffer = maybe_create_vertex_buffer(ctx, buffer_data);
         self.index_buffer = maybe_create_index_buffer(ctx, buffer_data);
         self.bind_groups = maybe_create_bind_groups(ctx, buffer_data);

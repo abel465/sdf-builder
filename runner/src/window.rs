@@ -8,7 +8,7 @@ use winit::{
 pub enum UserEvent {
     NewModule(RustGPUShader, CompiledShaderModules),
     SwitchShader(RustGPUShader),
-    NewVerticesReady,
+    NewBuffersReady,
     SetVSync(bool),
 }
 

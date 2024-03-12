@@ -112,7 +112,7 @@ impl State {
         window: &winit::window::Window,
     ) -> Result<(), wgpu::SurfaceError> {
         self.update();
-        self.render(&window)
+        self.render(window)
     }
 
     pub fn ui_consumes_event(&mut self, event: &WindowEvent) -> bool {
@@ -126,9 +126,9 @@ impl State {
         self.rpass.new_module(&self.ctx, new_module, &buffers);
     }
 
-    pub fn new_vertices(&mut self) {
+    pub fn new_buffers(&mut self) {
         let controller = &self.controllers[self.ui_state.active_shader as usize];
-        self.rpass.new_vertices(&self.ctx, &controller.buffers());
+        self.rpass.new_buffers(&self.ctx, &controller.buffers());
     }
 
     pub fn switch_shader(&mut self, shader: RustGPUShader) {
