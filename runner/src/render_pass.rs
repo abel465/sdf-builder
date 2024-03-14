@@ -325,10 +325,10 @@ fn maybe_create_bind_groups(
             ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 layout: &layout,
                 entries: &[wgpu::BindGroupEntry {
-                    binding: i as u32,
+                    binding: 0,
                     resource: buffer.as_entire_binding(),
                 }],
-                label: Some("bind_group"),
+                label: Some(&format!("bind_group {}", i)),
             })
         })
         .collect()
@@ -435,7 +435,7 @@ fn bind_group_layouts(ctx: &GraphicsContext, buffer_data: &BufferData) -> Vec<Bi
             ctx.device
                 .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                     entries: &[wgpu::BindGroupLayoutEntry {
-                        binding: i as u32,
+                        binding: 0,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Buffer {
                             ty: (match buffer {
@@ -451,7 +451,7 @@ fn bind_group_layouts(ctx: &GraphicsContext, buffer_data: &BufferData) -> Vec<Bi
                         },
                         count: None,
                     }],
-                    label: Some("bind_group_layout"),
+                    label: Some(&format!("bind_group_layout {}", i)),
                 })
         })
         .collect()
