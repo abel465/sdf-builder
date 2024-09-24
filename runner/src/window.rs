@@ -1,4 +1,4 @@
-use crate::{shader::CompiledShaderModules, RustGPUShader};
+use crate::shader::CompiledShaderModules;
 use egui_winit::winit::{
     dpi::PhysicalSize,
     event_loop::{EventLoop, EventLoopBuilder},
@@ -6,8 +6,7 @@ use egui_winit::winit::{
 };
 
 pub enum UserEvent {
-    NewModule(RustGPUShader, CompiledShaderModules),
-    SwitchShader(RustGPUShader),
+    NewModule(CompiledShaderModules),
     NewBuffersReady,
     SetVSync(bool),
 }

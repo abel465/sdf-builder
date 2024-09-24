@@ -1,5 +1,5 @@
 use crate::{
-    controller::{BindGroupBufferType, BufferData, SSBO},
+    bind_group_buffer::{BindGroupBufferType, BufferData, SSBO},
     window::UserEvent,
 };
 use bytemuck::Zeroable;
@@ -71,8 +71,8 @@ pub struct Controller {
     last_mouse_press: (Vec2, std::time::Instant),
 }
 
-impl crate::controller::Controller for Controller {
-    fn new(size: PhysicalSize<u32>) -> Self {
+impl Controller {
+    pub fn new(size: PhysicalSize<u32>) -> Self {
         let now = Instant::now();
         Self {
             size,
@@ -91,14 +91,14 @@ impl crate::controller::Controller for Controller {
         }
     }
 
-    fn resize(&mut self, size: PhysicalSize<u32>) {
+    pub fn resize(&mut self, size: PhysicalSize<u32>) {
         self.size = size;
         self.grid
             .resize(self.size.width as usize, self.size.height as usize);
         self.sdf_builder_tree.grid_needs_updating = true;
     }
 
-    fn mouse_move(&mut self, position: PhysicalPosition<f64>) {
+    pub fn mouse_move(&mut self, position: PhysicalPosition<f64>) {
         self.cursor = vec2(position.x as f32, position.y as f32);
         let cursor = self.cursor_from_pixels();
         if let (
@@ -141,7 +141,7 @@ impl crate::controller::Controller for Controller {
         }
     }
 
-    fn mouse_input(&mut self, state: ElementState, button: MouseButton) {
+    pub fn mouse_input(&mut self, state: ElementState, button: MouseButton) {
         if button == MouseButton::Left {
             self.mouse_button_pressed = match state {
                 ElementState::Pressed => {
@@ -172,7 +172,7 @@ impl crate::controller::Controller for Controller {
         }
     }
 
-    fn update(&mut self) {
+    pub fn update(&mut self) {
         self.shader_constants = ShaderConstants {
             size: self.size.into(),
             time: self.start.elapsed().as_secs_f32(),
@@ -187,15 +187,20 @@ impl crate::controller::Controller for Controller {
         }
     }
 
-    fn push_constants(&self) -> &[u8] {
+    pub fn push_constants(&self) -> &[u8] {
         bytemuck::bytes_of(&self.shader_constants)
     }
 
-    fn has_ui(&self) -> bool {
+    pub fn has_ui(&self) -> bool {
         true
     }
 
-    fn ui(&mut self, ctx: &Context, ui: &mut egui::Ui, event_proxy: &EventLoopProxy<UserEvent>) {
+    pub fn ui(
+        &mut self,
+        ctx: &Context,
+        ui: &mut egui::Ui,
+        event_proxy: &EventLoopProxy<UserEvent>,
+    ) {
         self.init_icon_textures(ctx);
         if self.grabbing.is_some() {
             match self.grab_type {
@@ -228,7 +233,7 @@ impl crate::controller::Controller for Controller {
         }
     }
 
-    fn buffers(&self) -> BufferData {
+    pub fn buffers(&self) -> BufferData {
         BufferData {
             bind_group_buffers: vec![BindGroupBufferType::SSBO(SSBO {
                 data: bytemuck::cast_slice(&self.grid.buffer[..]),

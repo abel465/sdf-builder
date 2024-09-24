@@ -11,7 +11,7 @@ impl ShapeUi for Disk {
         ui.label("Radius");
         ui.add(
             egui::DragValue::new(&mut self.radius)
-                .clamp_range(0.0..=f64::INFINITY)
+                .range(0.0..=f64::INFINITY)
                 .speed(0.01),
         );
         self
@@ -23,14 +23,14 @@ impl ShapeUi for Torus {
         ui.label("Major Radius");
         ui.add(
             egui::DragValue::new(&mut self.major_radius)
-                .clamp_range(0.0..=f64::INFINITY)
+                .range(0.0..=f64::INFINITY)
                 .speed(0.01),
         );
         ui.end_row();
         ui.label("Minor Radius");
         ui.add(
             egui::DragValue::new(&mut self.minor_radius)
-                .clamp_range(0.0..=self.major_radius)
+                .range(0.0..=self.major_radius)
                 .speed(0.01),
         );
         self
@@ -42,14 +42,14 @@ impl ShapeUi for Rectangle {
         ui.label("Width");
         ui.add(
             egui::DragValue::new(&mut self.width)
-                .clamp_range(0.0..=f64::INFINITY)
+                .range(0.0..=f64::INFINITY)
                 .speed(0.01),
         );
         ui.end_row();
         ui.label("Height");
         ui.add(
             egui::DragValue::new(&mut self.height)
-                .clamp_range(0.0..=f64::INFINITY)
+                .range(0.0..=f64::INFINITY)
                 .speed(0.01),
         );
         self
@@ -61,14 +61,14 @@ impl ShapeUi for Cross {
         ui.label("Length");
         ui.add(
             egui::DragValue::new(&mut self.length)
-                .clamp_range(0.0..=f64::INFINITY)
+                .range(0.0..=f64::INFINITY)
                 .speed(0.01),
         );
         ui.end_row();
         ui.label("Thickness");
         ui.add(
             egui::DragValue::new(&mut self.thickness)
-                .clamp_range(0.0..=self.length)
+                .range(0.0..=self.length)
                 .speed(0.01),
         );
         self

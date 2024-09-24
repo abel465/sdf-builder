@@ -3,20 +3,8 @@ resolver = "2"
 members = [
   "runner",
   "runner/builder",
-  "crates/dfutils",
-  "shaders/mandelbrot",
-  "shaders/ray-marching",
-  "shaders/ray-marching-2d",
-  "shaders/koch-snowflake",
-  "shaders/sierpinski-triangle",
-  "shaders/sdfs-2d",
-  "shaders/sdfs-3d",
-  "shaders/hydrogen-wavefunction",
-  "shaders/spherical-harmonics",
-  "shaders/spherical-harmonics-shape",
-  "shaders/fun-rep-demo",
+  # "crates/dfutils",
   "shaders/sdf-builder",
-  "shaders/procedural-generation",
 ]
 default-members = ["runner"]
 
@@ -27,12 +15,12 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [workspace.dependencies.spirv-std]
-git = "https://github.com/EmbarkStudios/rust-gpu"
-rev = "54f6978c25b7e168ded04e720b996625b3654ebd"
+git = "https://github.com/Rust-GPU/rust-gpu"
+rev = "83c7e8d2255a7e86d40b4428934dab303b0d5934"
 
 [workspace.dependencies.spirv-builder]
-git = "https://github.com/EmbarkStudios/rust-gpu"
-rev = "54f6978c25b7e168ded04e720b996625b3654ebd"
+git = "https://github.com/Rust-GPU/rust-gpu"
+rev = "83c7e8d2255a7e86d40b4428934dab303b0d5934"
 default-features = false
 
 [profile.dev]

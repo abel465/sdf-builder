@@ -8,7 +8,6 @@ use egui_winit::winit::{
     event::{DeviceEvent, ElementState, Event, KeyEvent, WindowEvent},
     event_loop::ControlFlow,
     keyboard::{Key, NamedKey},
-    window::CursorGrabMode,
 };
 
 async fn run(options: Options, window: Window, compiled_shader_modules: CompiledShaderModules) {
@@ -52,21 +51,7 @@ async fn run(options: Options, window: Window, compiled_shader_modules: Compiled
                     WindowEvent::Resized(size) => app.resize(size),
                     WindowEvent::MouseInput { state, button, .. } => app.mouse_input(state, button),
                     WindowEvent::MouseWheel { delta, .. } => app.mouse_scroll(delta),
-                    WindowEvent::CursorMoved { position, .. } => {
-                        if window.has_focus() {
-                            if app.cursor_visible() {
-                                window.set_cursor_grab(CursorGrabMode::None).unwrap();
-                                window.set_cursor_visible(true);
-                            } else {
-                                window
-                                    .set_cursor_grab(CursorGrabMode::Confined)
-                                    .or_else(|_| window.set_cursor_grab(CursorGrabMode::Locked))
-                                    .unwrap();
-                                window.set_cursor_visible(false);
-                            }
-                        }
-                        app.mouse_move(position)
-                    }
+                    WindowEvent::CursorMoved { position, .. } => app.mouse_move(position),
                     _ => {}
                 }
             }
@@ -75,12 +60,9 @@ async fn run(options: Options, window: Window, compiled_shader_modules: Compiled
                 ..
             } => app.mouse_delta(delta),
             Event::UserEvent(event) => match event {
-                UserEvent::NewModule(shader, new_module) => {
-                    app.new_module(shader, new_module);
+                UserEvent::NewModule(new_module) => {
+                    app.new_module(new_module);
                     window.request_redraw();
-                }
-                UserEvent::SwitchShader(shader) => {
-                    app.switch_shader(shader);
                 }
                 UserEvent::SetVSync(enable) => {
                     app.set_vsync(enable);
@@ -116,7 +98,7 @@ pub fn start(options: Options) {
         {
             let proxy = window.event_loop.create_proxy();
             Some(Box::new(move |res| {
-                match proxy.send_event(UserEvent::NewModule(options.shader, res)) {
+                match proxy.send_event(UserEvent::NewModule(res)) {
                     Ok(it) => it,
                     // ShaderModuleDescriptor is not `Debug`, so can't use unwrap/expect
                     Err(_err) => panic!("Event loop dead"),

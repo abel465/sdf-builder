@@ -3,7 +3,7 @@
 
   inputs = {
     fenix = {
-      url = "github:nix-community/fenix/3116ee073ab3931c78328ca126224833c95e6227";
+      url = "github:nix-community/fenix/5c3ff469526a6ca54a887fbda9d67aef4dd4a921";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     flake-utils.url = "github:numtide/flake-utils";

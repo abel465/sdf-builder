@@ -1,9 +1,8 @@
 use crate::{
+    bind_group_buffer::{BindGroupBufferType, BufferData, SSBO},
     context::GraphicsContext,
-    controller::{BindGroupBufferType, BufferData, Controller, SSBO},
-    model::Vertex,
+    controller::Controller,
     shader::CompiledShaderModules,
-    texture::Texture,
     ui::{Ui, UiState},
     Options,
 };
@@ -26,8 +25,6 @@ pub struct RenderPass {
     render_pipeline: wgpu::RenderPipeline,
     ui_renderer: egui_wgpu::Renderer,
     options: Options,
-    vertex_buffer: Option<wgpu::Buffer>,
-    index_buffer: Option<wgpu::Buffer>,
     bind_groups: Vec<wgpu::BindGroup>,
 }
 
@@ -47,7 +44,7 @@ impl RenderPass {
                 bind_group_layouts: layout_refs,
                 push_constant_ranges: &[wgpu::PushConstantRange {
                     stages: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                    range: 0..shared::push_constants::largest_size() as u32,
+                    range: 0..shared::push_constants::mem_size() as u32,
                 }],
             });
 
@@ -57,10 +54,7 @@ impl RenderPass {
             &pipeline_layout,
             ctx.config.format,
             compiled_shader_modules,
-            buffer_data,
         );
-        let vertex_buffer = maybe_create_vertex_buffer(ctx, buffer_data);
-        let index_buffer = maybe_create_index_buffer(ctx, buffer_data);
         let bind_groups = maybe_create_bind_groups(ctx, buffer_data);
 
         let ui_renderer = egui_wgpu::Renderer::new(&ctx.device, ctx.config.format, None, 1);
@@ -69,8 +63,6 @@ impl RenderPass {
             render_pipeline,
             ui_renderer,
             options,
-            vertex_buffer,
-            index_buffer,
             bind_groups,
         }
     }
@@ -81,8 +73,7 @@ impl RenderPass {
         window: &Window,
         ui: &mut Ui,
         ui_state: &mut UiState,
-        controller: &mut dyn Controller,
-        depth_texture: Option<&Texture>,
+        controller: &mut Controller,
     ) -> Result<(), wgpu::SurfaceError> {
         let output = match ctx.surface.get_current_texture() {
             Ok(surface_texture) => surface_texture,
@@ -101,7 +92,7 @@ impl RenderPass {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
-        self.render_shader(ctx, &output_view, controller, depth_texture);
+        self.render_shader(ctx, &output_view, controller);
         self.render_ui(ctx, &output_view, window, ui, ui_state, controller);
 
         output.present();
@@ -113,8 +104,7 @@ impl RenderPass {
         &mut self,
         ctx: &GraphicsContext,
         output_view: &TextureView,
-        controller: &dyn Controller,
-        depth_texture: Option<&Texture>,
+        controller: &Controller,
     ) {
         let mut encoder = ctx
             .device
@@ -130,24 +120,11 @@ impl RenderPass {
                     view: output_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(if self.index_buffer.is_some() {
-                            wgpu::Color::BLACK
-                        } else {
-                            wgpu::Color::GREEN
-                        }),
+                        load: wgpu::LoadOp::Clear(wgpu::Color::GREEN),
                         store: wgpu::StoreOp::Store,
                     },
                 })],
-                depth_stencil_attachment: depth_texture.map(|depth_texture| {
-                    wgpu::RenderPassDepthStencilAttachment {
-                        view: &depth_texture.view,
-                        depth_ops: Some(wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(1.0),
-                            store: wgpu::StoreOp::Store,
-                        }),
-                        stencil_ops: None,
-                    }
-                }),
+                depth_stencil_attachment: None,
             });
 
             rpass.set_pipeline(&self.render_pipeline);
@@ -159,21 +136,7 @@ impl RenderPass {
             for (i, bind_group) in self.bind_groups.iter().enumerate() {
                 rpass.set_bind_group(i as u32, bind_group, &[]);
             }
-            if let Some(vertex_buffer) = &self.vertex_buffer {
-                rpass.set_vertex_buffer(0, vertex_buffer.slice(..));
-                if let Some(index_buffer) = &self.index_buffer {
-                    rpass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-                    let num_indices =
-                        index_buffer.size() as u32 / std::mem::size_of::<u32>() as u32;
-                    rpass.draw_indexed(0..num_indices, 0, 0..1);
-                } else {
-                    let num_vertices =
-                        vertex_buffer.size() as u32 / std::mem::size_of::<Vertex>() as u32;
-                    rpass.draw(0..num_vertices, 0..1);
-                }
-            } else {
-                rpass.draw(0..3, 0..1);
-            }
+            rpass.draw(0..3, 0..1);
         }
 
         ctx.queue.submit(Some(encoder.finish()));
@@ -186,7 +149,7 @@ impl RenderPass {
         window: &Window,
         ui: &mut Ui,
         ui_state: &mut UiState,
-        controller: &mut dyn Controller,
+        controller: &mut Controller,
     ) {
         let (clipped_primitives, textures_delta) = ui.prepare(window, ui_state, controller);
 
@@ -257,7 +220,7 @@ impl RenderPass {
                 bind_group_layouts: layout_refs,
                 push_constant_ranges: &[wgpu::PushConstantRange {
                     stages: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                    range: 0..shared::push_constants::largest_size() as u32,
+                    range: 0..shared::push_constants::mem_size() as u32,
                 }],
             });
         self.render_pipeline = create_pipeline(
@@ -266,43 +229,12 @@ impl RenderPass {
             &pipeline_layout,
             ctx.config.format,
             new_module,
-            buffer_data,
         );
     }
 
     pub fn new_buffers(&mut self, ctx: &GraphicsContext, buffer_data: &BufferData) {
-        self.vertex_buffer = maybe_create_vertex_buffer(ctx, buffer_data);
-        self.index_buffer = maybe_create_index_buffer(ctx, buffer_data);
         self.bind_groups = maybe_create_bind_groups(ctx, buffer_data);
     }
-}
-
-fn maybe_create_vertex_buffer(
-    ctx: &GraphicsContext,
-    buffer_data: &BufferData,
-) -> Option<wgpu::Buffer> {
-    buffer_data.vertex.map(|vertices| {
-        ctx.device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(vertices),
-                usage: wgpu::BufferUsages::VERTEX,
-            })
-    })
-}
-
-fn maybe_create_index_buffer(
-    ctx: &GraphicsContext,
-    buffer_data: &BufferData,
-) -> Option<wgpu::Buffer> {
-    buffer_data.index.map(|indices| {
-        ctx.device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Index Buffer"),
-                contents: bytemuck::cast_slice(indices),
-                usage: wgpu::BufferUsages::INDEX,
-            })
-    })
 }
 
 fn maybe_create_bind_groups(
@@ -345,7 +277,6 @@ fn create_pipeline(
     pipeline_layout: &wgpu::PipelineLayout,
     surface_format: wgpu::TextureFormat,
     compiled_shader_modules: CompiledShaderModules,
-    buffer_data: &BufferData,
 ) -> wgpu::RenderPipeline {
     // FIXME(eddyb) automate this decision by default.
     let create_module = |module| {
@@ -378,20 +309,14 @@ fn create_pipeline(
         &fs_module
     };
 
-    let buffers_empty = &[];
-    let buffers = &[crate::model::Vertex::desc()];
-
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: None,
         layout: Some(pipeline_layout),
         vertex: wgpu::VertexState {
             module: vs_module,
             entry_point: vs_entry_point,
-            buffers: if buffer_data.vertex.is_some() {
-                buffers
-            } else {
-                buffers_empty
-            },
+            buffers: &[],
+            compilation_options: Default::default(),
         },
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
@@ -402,17 +327,7 @@ fn create_pipeline(
             polygon_mode: wgpu::PolygonMode::Fill,
             conservative: false,
         },
-        depth_stencil: if buffer_data.use_depth_buffer {
-            Some(wgpu::DepthStencilState {
-                format: crate::texture::Texture::DEPTH_FORMAT,
-                depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::Less,
-                stencil: wgpu::StencilState::default(),
-                bias: wgpu::DepthBiasState::default(),
-            })
-        } else {
-            None
-        },
+        depth_stencil: None,
         multisample: wgpu::MultisampleState {
             count: 1,
             mask: !0,
@@ -426,6 +341,7 @@ fn create_pipeline(
                 blend: None,
                 write_mask: wgpu::ColorWrites::ALL,
             })],
+            compilation_options: Default::default(),
         }),
         multiview: None,
     })

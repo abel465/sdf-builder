@@ -1,4 +1,4 @@
-use crate::{Options, RustGPUShader};
+use crate::Options;
 use std::borrow::Cow;
 
 pub struct CompiledShaderModules {
@@ -52,23 +52,8 @@ pub fn maybe_watch(
             option_env!("SHADERS_TARGET_DIR").unwrap_or(env!("OUT_DIR")),
         );
         std::env::set_var("PROFILE", env!("PROFILE"));
-        let crate_name = match options.shader {
-            RustGPUShader::Mandelbrot => "mandelbrot",
-            RustGPUShader::RayMarching => "ray-marching",
-            RustGPUShader::RayMarching2D => "ray-marching-2d",
-            RustGPUShader::SierpinskiTriangle => "sierpinski-triangle",
-            RustGPUShader::KochSnowflake => "koch-snowflake",
-            RustGPUShader::SDFs2D => "sdfs-2d",
-            RustGPUShader::SDFs3D => "sdfs-3d",
-            RustGPUShader::HydrogenWavefunction => "hydrogen-wavefunction",
-            RustGPUShader::SphericalHarmonics => "spherical-harmonics",
-            RustGPUShader::SphericalHarmonicsShape => "spherical-harmonics-shape",
-            RustGPUShader::FunRepDemo => "fun-rep-demo",
-            RustGPUShader::SdfBuilder => "sdf-builder",
-            RustGPUShader::ProceduralGeneration => "procedural-generation",
-        };
         let manifest_dir = option_env!("SHADERS_DIR").unwrap_or(env!("CARGO_MANIFEST_DIR"));
-        let crate_path = [manifest_dir, "..", "shaders", crate_name]
+        let crate_path = [manifest_dir, "..", "shaders", "sdf-builder"]
             .iter()
             .copied()
             .collect::<PathBuf>();

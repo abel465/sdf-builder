@@ -21,11 +21,11 @@ shared = { path = "../shaders/shared" }
 futures = { version = "0.3", default-features = false, features = ["std", "executor"] }
 structopt = "0.3"
 strum = { version = "0.26.2", features = ["derive"] }
-wgpu = { version = "0.19.1", features = ["spirv", "vulkan-portability"] }
+wgpu = { version = "0.20.1", features = ["spirv", "vulkan-portability"] }
 bytemuck = "1.15.0"
-egui = "0.27.2"
-egui-wgpu = "0.27.2"
-egui-winit = "0.27.2"
+egui = "0.28.1"
+egui-wgpu = "0.28.1"
+egui-winit = "0.28.1"
 glam = "0.25"
 dfutils = { path = "../crates/dfutils" }
 rand = "0.8.5"

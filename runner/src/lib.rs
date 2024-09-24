@@ -1,44 +1,20 @@
 use structopt::StructOpt;
-use strum::{Display, EnumIter, EnumString};
 
 mod app;
-mod camera;
+mod bind_group_buffer;
 mod context;
-mod controller;
 mod egui_components;
 mod fps_counter;
-mod model;
 mod render_pass;
 mod shader;
-mod shaders;
+mod controller;
 mod state;
-mod texture;
 mod ui;
 mod window;
 
-#[derive(EnumString, EnumIter, Display, PartialEq, Eq, Copy, Clone)]
-pub enum RustGPUShader {
-    Mandelbrot,
-    RayMarching,
-    RayMarching2D,
-    SierpinskiTriangle,
-    KochSnowflake,
-    SDFs2D,
-    SDFs3D,
-    HydrogenWavefunction,
-    SphericalHarmonics,
-    SphericalHarmonicsShape,
-    FunRepDemo,
-    SdfBuilder,
-    ProceduralGeneration,
-}
-
 #[derive(StructOpt, Clone, Copy)]
-#[structopt(name = "example-runner-wgpu")]
+#[structopt(name = "sdf-builder")]
 pub struct Options {
-    #[structopt(short, long, default_value = "SdfBuilder")]
-    shader: RustGPUShader,
-
     // Default to true after the following is fixed
     // https://github.com/gfx-rs/wgpu/issues/5128
     #[structopt(long)]
