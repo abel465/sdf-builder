@@ -3,7 +3,7 @@
 
   inputs = {
     fenix = {
-      url = "github:nix-community/fenix/5c3ff469526a6ca54a887fbda9d67aef4dd4a921";
+      url = "github:nix-community/fenix/5708f08c8bcb6dd98b573a162e05cd5aa506091e";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     flake-utils.url = "github:numtide/flake-utils";
@@ -52,7 +52,7 @@
         cargoHash = "";
         cargoLock.lockFile = ./Cargo.lock;
         cargoLock.outputHashes = {
-          "rustc_codegen_spirv-0.9.0" = "sha256-uZn1p2pM5UYQKlY9u16aafPH7dfQcSG7PaFDd1sT4Qc=";
+          "rustc_codegen_spirv-0.9.0" = "sha256-6QENP2ttWrtykfv+TUfjGrOajkN2X9cHYINauFZiup8=";
         };
         nativeBuildInputs = [pkgs.makeWrapper];
         configurePhase = ''
