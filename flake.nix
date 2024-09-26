@@ -1,5 +1,5 @@
 {
-  description = "Rust GPU Shaders";
+  description = "SDF Builder";
 
   inputs = {
     fenix = {
@@ -47,11 +47,10 @@
           libxkbcommon
         ];
         shadersCompilePath = "$HOME/.cache/rust-gpu-shaders";
-        rustGpuShaders = rustPlatform.buildRustPackage {
-          pname = "rust-gpu-shaders";
+        sdf-builder = rustPlatform.buildRustPackage {
+          pname = "sdf-builder";
           version = "0.0.0";
           src = ./.;
-          cargoHash = "";
           cargoLock.lockFile = ./Cargo.lock;
           cargoLock.outputHashes = {
             "rustc_codegen_spirv-0.9.0" = "sha256-6QENP2ttWrtykfv+TUfjGrOajkN2X9cHYINauFZiup8=";
@@ -69,13 +68,13 @@
           '';
         };
       in rec {
-        packages.default = pkgs.writeShellScriptBin "rust-gpu-shaders" ''
+        packages.default = pkgs.writeShellScriptBin "sdf-builder" ''
           export CARGO_TARGET_DIR="${shadersCompilePath}"
-          exec -a "$0" "${rustGpuShaders}/bin/runner" "$@"
+          exec -a "$0" "${sdf-builder}/bin/runner" "$@"
         '';
         apps.default = {
           type = "app";
-          program = "${packages.default}/bin/rust-gpu-shaders";
+          program = "${packages.default}/bin/sdf-builder";
         };
         devShells.default = with pkgs;
           mkShell {
