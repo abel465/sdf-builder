@@ -191,10 +191,6 @@ impl Controller {
         bytemuck::bytes_of(&self.shader_constants)
     }
 
-    pub fn has_ui(&self) -> bool {
-        true
-    }
-
     pub fn ui(
         &mut self,
         ctx: &Context,

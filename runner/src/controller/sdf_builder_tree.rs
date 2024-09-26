@@ -326,6 +326,10 @@ impl SdfBuilderTree {
         // The only way this can fail is if the receiver has been dropped.
         self.command_sender.send(command).ok();
     }
+
+    pub fn size(&self) -> usize {
+        self.items.len() - 1
+    }
 }
 
 //
@@ -333,17 +337,34 @@ impl SdfBuilderTree {
 //
 impl SdfBuilderTree {
     pub fn ui(&mut self, ui: &mut egui::Ui, icons: &TextureHandles, size: PhysicalSize<u32>) {
-        self.shapes_ui(ui, &icons.shapes);
-        ui.separator();
+        ui.style_mut().interaction.selectable_labels = false;
+        ui.vertical_centered(|ui| {
+            ui.label(egui::RichText::new("Operators").size(16.0));
+        });
         self.operators_ui(ui, &icons.operators);
         ui.separator();
-
-        let top_level_items = self.get_root_children();
-        if top_level_items.is_empty() {
-            self.root_drop_target(ui);
-        } else {
-            self.container_children_ui(ui, top_level_items);
-        }
+        ui.vertical_centered(|ui| {
+            ui.label(egui::RichText::new("Shapes").size(16.0));
+        });
+        self.shapes_ui(ui, &icons.shapes);
+        ui.separator();
+        ui.vertical_centered(|ui| {
+            ui.label(egui::RichText::new("Composition Tree").size(16.0));
+        });
+        egui::Frame::none()
+            .rounding(egui::Rounding::same(2.0))
+            .stroke(egui::Stroke::new(1.0, egui::Color32::DARK_GRAY))
+            .inner_margin(egui::Margin::same(3.0))
+            .show(ui, |ui| {
+                egui::ScrollArea::both().show(ui, |ui| {
+                    let top_level_items = self.get_root_children();
+                    if top_level_items.is_empty() {
+                        self.root_drop_target(ui);
+                    } else {
+                        self.container_children_ui(ui, top_level_items);
+                    }
+                });
+            });
 
         self.handle_extra_item(ui, size);
 
@@ -433,8 +454,14 @@ impl SdfBuilderTree {
                 }
             }
         };
+        let size = self.size();
+        let h = if size == 0 {
+            44.0
+        } else {
+            size as f32 * 21.0 + 38.0
+        };
         egui::ScrollArea::vertical()
-            .max_height(220.0)
+            .max_height(ui.available_height() - h)
             .show(ui, |ui| {
                 egui::Grid::new("shape_icons_grid").show(ui, add_contents);
             });
@@ -748,7 +775,7 @@ impl SdfBuilderTree {
     }
 
     fn root_drop_target(&self, ui: &mut egui::Ui) {
-        let rect = ui.allocate_space(egui::vec2(ui.available_width(), 12.0)).1;
+        let rect = ui.allocate_space(egui::vec2(142.0, 2.0)).1;
 
         // find the item being dragged
         let Some(dragged_item_id) = egui::DragAndDrop::payload(ui.ctx()).map(|payload| (*payload))

@@ -1,7 +1,7 @@
 use crate::{controller::Controller, fps_counter::FpsCounter, window::UserEvent};
 use egui::{
     epaint::{textures::TexturesDelta, ClippedPrimitive},
-    vec2, Align2, Context, Vec2,
+    Context,
 };
 use egui_winit::{
     winit::{event::WindowEvent, event_loop::EventLoopProxy, window::Window},
@@ -80,35 +80,27 @@ impl Ui {
     }
 
     fn ui(&self, ctx: &Context, ui_state: &mut UiState, controller: &mut Controller) {
-        let window_margin = 10.0;
-        egui::Window::new("Shaders")
-            .resizable(false)
-            .anchor(Align2::LEFT_TOP, Vec2::splat(window_margin))
-            .default_width(140.0)
-            .show(ctx, |ui| {
-                ui.checkbox(&mut ui_state.show_fps, "fps counter");
-                if ui.checkbox(&mut ui_state.vsync, "V-Sync").clicked() {
-                    self.send_event(UserEvent::SetVSync(ui_state.vsync));
+        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+            egui::menu::bar(ui, |ui| {
+                ui.menu_button("Settings", |ui| {
+                    ui.checkbox(&mut ui_state.show_fps, "fps counter");
+                    if ui.checkbox(&mut ui_state.vsync, "V-Sync").clicked() {
+                        self.send_event(UserEvent::SetVSync(ui_state.vsync));
+                    }
+                });
+                if ui_state.show_fps {
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.style_mut().interaction.selectable_labels = false;
+                        ui.label(format!("FPS: {}", ui_state.fps));
+                    });
                 }
             });
-        if controller.has_ui() {
-            egui::Window::new("top_right")
-                .resizable(false)
-                .anchor(Align2::RIGHT_TOP, window_margin * vec2(-1.0, 1.0))
-                .default_width(130.0)
-                .show(ctx, |ui| {
-                    controller.ui(ctx, ui, &self.event_proxy);
-                });
-        }
-        if ui_state.show_fps {
-            egui::Window::new("fps")
-                .title_bar(false)
-                .resizable(false)
-                .interactable(false)
-                .anchor(Align2::RIGHT_BOTTOM, Vec2::splat(-window_margin))
-                .show(ctx, |ui| {
-                    ui.label(format!("FPS: {}", ui_state.fps));
-                });
-        }
+        });
+        egui::SidePanel::right("right_panel")
+            .resizable(false)
+            .exact_width(162.0)
+            .show(ctx, |ui| {
+                controller.ui(ctx, ui, &self.event_proxy);
+            });
     }
 }
