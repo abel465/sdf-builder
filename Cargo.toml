@@ -2,8 +2,6 @@
 resolver = "2"
 members = [
   "runner",
-  "runner/builder",
-  # "crates/dfutils",
   "shaders/sdf-builder",
 ]
 default-members = ["runner"]
