@@ -351,6 +351,18 @@ impl Controller {
                     GrabType::None
                 }
             }
+            Shape::Torus(torus) => {
+                let minor_radius = torus.minor_radius;
+                if d.abs() < 0.01 || (d + minor_radius).abs() < 0.01 {
+                    ctx.set_cursor_icon(self.choose_resize_cursor());
+                    GrabType::Resize
+                } else if d < 0.0 {
+                    ctx.set_cursor_icon(CursorIcon::Grab);
+                    GrabType::Move
+                } else {
+                    GrabType::None
+                }
+            }
             _ => {
                 if d.abs() < 0.01 {
                     ctx.set_cursor_icon(self.choose_resize_cursor());

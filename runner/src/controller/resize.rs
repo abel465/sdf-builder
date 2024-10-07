@@ -15,10 +15,11 @@ impl Resize for Disk {
 
 impl Resize for Torus {
     fn resize(mut self, initial: Vec2, current: Vec2, derivative: Vec2) -> Self {
-        let s = (current - initial) * derivative;
-        if initial.length() > self.major_radius {
+        if self.minor_radius > 0.01 && (initial.length() - self.major_radius).abs() < 0.01 {
+            let s = (current - initial) * initial.signum();
             self.major_radius = (self.major_radius + s.x + s.y).max(0.0);
         } else {
+            let s = (current - initial) * derivative;
             self.minor_radius = (self.minor_radius + s.x + s.y).max(0.0);
         }
         self.minor_radius = self.minor_radius.min(self.major_radius);
