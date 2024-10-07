@@ -164,8 +164,15 @@ impl Controller {
                     if press_position.distance_squared(self.cursor) < 4.0
                         && instant.elapsed() < Duration::from_millis(300)
                     {
-                        self.sdf_builder_tree
-                            .send_command(Command::SetSelectedItem(self.get_item_for_selection()));
+                        let to_select = self.get_item_for_selection();
+                        let selected_item = &self.sdf_builder_tree.selected_item;
+                        self.sdf_builder_tree.send_command(Command::SetSelectedItem(
+                            if to_select.id == selected_item.id {
+                                SelectedItem::NONE
+                            } else {
+                                to_select
+                            },
+                        ));
                     }
                     false
                 }
