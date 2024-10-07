@@ -7,8 +7,9 @@ use dfutils::{grid::*, primitives_enum::Shape, sdf::Sdf};
 use egui::{Context, CursorIcon};
 use egui_winit::winit::{
     dpi::{PhysicalPosition, PhysicalSize},
-    event::{ElementState, MouseButton},
+    event::{ElementState, KeyEvent, MouseButton},
     event_loop::EventLoopProxy,
+    keyboard::{Key, NamedKey},
 };
 use glam::*;
 use icons::TextureHandles;
@@ -172,6 +173,19 @@ impl Controller {
         }
     }
 
+    pub fn keyboard_input(&mut self, key: KeyEvent) {
+        if !key.state.is_pressed() {
+            return;
+        }
+        if let Key::Named(NamedKey::Delete) = key.logical_key {
+            if let Some(item_id) = self.sdf_builder_tree.selected_item.id {
+                self.sdf_builder_tree
+                    .send_command(Command::RemoveItem { item_id });
+                self.sdf_builder_tree.selected_item = SelectedItem::NONE;
+            }
+        }
+    }
+
     pub fn update(&mut self) {
         self.shader_constants = ShaderConstants {
             size: self.size.into(),
@@ -235,7 +249,6 @@ impl Controller {
                 data: bytemuck::cast_slice(&self.grid.buffer[..]),
                 read_only: true,
             })],
-            ..Default::default()
         }
     }
 }

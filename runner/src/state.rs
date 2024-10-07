@@ -64,8 +64,8 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn keyboard_input(&mut self, _event: KeyEvent) {
-        // self.controller.keyboard_input(event);
+    pub fn keyboard_input(&mut self, event: KeyEvent) {
+        self.controller.keyboard_input(event);
     }
 
     pub fn mouse_input(&mut self, state: ElementState, button: MouseButton) {
