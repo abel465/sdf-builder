@@ -3,7 +3,7 @@
 
   inputs = {
     fenix = {
-      url = "github:nix-community/fenix/5708f08c8bcb6dd98b573a162e05cd5aa506091e";
+      url = "github:nix-community/fenix/5c3ff469526a6ca54a887fbda9d67aef4dd4a921";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     flake-parts.url = "github:hercules-ci/flake-parts";
@@ -53,8 +53,15 @@
           src = ./.;
           cargoLock.lockFile = ./Cargo.lock;
           cargoLock.outputHashes = {
-            "rustc_codegen_spirv-0.9.0" = "sha256-6QENP2ttWrtykfv+TUfjGrOajkN2X9cHYINauFZiup8=";
+            "rustc_codegen_spirv-0.9.0" = "sha256-BaWGJQjbAH5WdXul2M2C1hsfsH659qpQEeM/c5bkYds=";
           };
+          dontCargoSetupPostUnpack = true;
+          postUnpack = ''
+            mkdir -p .cargo
+            cat "$cargoDeps"/.cargo/config | sed "s|cargo-vendor-dir|$cargoDeps|" >> .cargo/config
+            # HACK(eddyb) bypass cargoSetupPostPatchHook.
+            export cargoDepsCopy="$cargoDeps"
+          '';
           nativeBuildInputs = [pkgs.makeWrapper];
           configurePhase = ''
             export SHADERS_DIR="$out/repo/shaders"
